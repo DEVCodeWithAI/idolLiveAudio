@@ -5,6 +5,12 @@
 > Built with the assistance of AI (Gemini + ChatGPT)  
 
 ---
+## 🖥️ Screenshot
+![idolLiveAudio](Resources/SplashScreen.png)
+
+![idolLiveAudio Main Interface](docs/images/screenshot_main.png)
+
+Lightweight, intuitive interface for managing plugins and soundboard during your live performances.
 
 ## 🚀 Key Features
 ✅ Supports Waves, Antares Auto-Tune Pro - Auto-key, and VST3 plugins  
