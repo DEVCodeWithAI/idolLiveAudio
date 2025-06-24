@@ -1,0 +1,131 @@
+{
+    "menubar": {
+        "audioSystem": "Thiết bị âm thanh:",
+        "device": "Nguồn:",
+        "appOutput": "Đầu ra ứng dụng:",
+        "asioPanel": "Bảng ASIO",
+        "voicemeeterPanel": "Bảng Voicemeeter",
+        "audioSettings": "Cài đặt âm thanh...",
+        "selectSystem": "Chọn hệ thống âm thanh...",
+        "selectDevice": "Vui lòng chọn thiết bị...",
+        "noOutput": "Không có đầu ra",
+        "outputChannels": "Đầu ra:"
+    },
+    "presetbar": {
+        "presetRunning": "Preset đang chạy:",
+        "quickChoice": "Chọn nhanh:",
+        "load": "Tải",
+        "noPresetLoaded": "Chưa tải Preset",
+        "overwriteTitle": "Ghi đè Preset",
+        "overwriteMessage": "Một preset có tên '{{presetName}}' đã tồn tại. Bạn có muốn ghi đè lên nó không?",
+        "saveAsTitle": "Lưu Preset với tên...",
+        "yes": "Đồng ý",
+        "no": "Không"
+    },
+    "tracks": {
+        "vocal": "GIỌNG HÁT",
+        "music": "NHẠC NỀN",
+        "input": "Đầu vào:",
+        "mute": "TẮT TIẾNG",
+        "muted": "ĐÃ TẮT",
+        "activePlugins": "Plugin đang hoạt động",
+        "addPluginPlaceholder": "Thêm Plugin...",
+        "add": "Thêm",
+        "pleaseSelectDevice": "Vui lòng chọn thiết bị âm thanh"
+    },
+    "pinnedPlugin": {
+        "title": "PLUGIN ĐÃ GHIM",
+        "placeholder": "Giao diện Plugin sẽ xuất hiện ở đây",
+        "selectToPin": "Ghim Plugin..."
+    },
+    "managers": {
+        "presetManager": "QUẢN LÝ PRESET",
+        "savePreset": "Lưu Preset hiện tại",
+        "managePresets": "Quản lý các Preset"
+    },
+    "pluginManagement": {
+        "scan": "Quét Plugin hệ thống",
+        "add": "Thêm Plugin từ tệp...",
+        "manage": "Quản lý Plugin..."
+    },
+    "statusbar": {
+        "mute": "Tắt tiếng kênh Tổng",
+        "unmute": "Bật tiếng kênh Tổng",
+        "muteText": "TẮT TIẾNG",
+        "mutedText": "ĐÃ TẮT",
+        "masterVolumeLabel": "Âm lượng Tổng:"
+    },
+    "soundboard": {
+        "title": "BẢNG ÂM THANH",
+        "volume": "Âm lượng:",
+        "enabled": "BẬT",
+        "disabled": "TẮT",
+        "stop": "DỪNG TẤT CẢ"
+    },
+    "tooltips": {
+        "lock": "Khóa điều khiển",
+        "unlock": "Mở khóa điều khiển"
+    },
+    "alerts": {
+        "asio4allNotFoundTitle": "Không tìm thấy ASIO4ALL",
+        "asio4allNotFoundMessage": "Bảng điều khiển ASIO4ALL không được tìm thấy tại đường dẫn cài đặt mặc định. Vui lòng kiểm tra xem phần mềm đã được cài đặt hay chưa.",
+        "cleanProfileConfirmTitle": "Xác nhận làm sạch Profile",
+        "cleanProfileConfirmMessage": "Hành động này sẽ xóa vĩnh viễn tất cả các âm thanh và phím tắt đã gán cho profile hiện tại. Hành động này không thể hoàn tác. Bạn có chắc không?",
+        "pluginUiDisabledTitle": "Giao diện Plugin bị vô hiệu hóa",
+        "pluginUiDisabledMessage": "Giao diện của plugin này không tương thích với idolLiveAudio và đã được tắt để tránh gây crash. Phần xử lý âm thanh của plugin vẫn đang hoạt động.",
+        "saveChangesTitle": "Thay đổi chưa được lưu",
+        "saveChangesMessage": "Bạn có những thay đổi chưa được lưu. Bạn có muốn lưu chúng vào một preset mới trước khi tiếp tục không?",
+        "saveButton": "Lưu với tên mới...",
+        "dontSaveButton": "Không lưu",
+        "cancelButton": "Hủy"
+    },
+    "pluginManagerWindow": {
+        "title": "Quản lý Plugin",
+        "scan": "Quét tìm Plugin mới",
+        "add": "Thêm Plugin từ tệp...",
+        "remove": "Xóa mục đã chọn"
+    },
+    "quickKeySettingsWindow": {
+        "title": "Cài đặt Phím tắt & Bảng Âm thanh",
+        "slotNameLabel": "Tên:",
+        "fileLabel": "Tệp âm thanh:",
+        "hotkeyLabel": "Phím nóng:",
+        "noFile": "Gán tệp...",
+        "noHotkey": "Đặt phím nóng...",
+        "saveProfile": "Lưu Profile",
+        "cleanProfile": "Làm sạch Profile",
+        "importProfile": "Nhập Profile...",
+        "exportProfile": "Xuất Profile...",
+        "hotkeyPromptTitle": "Đặt phím nóng",
+        "hotkeyPromptMessage": "Nhấn một tổ hợp phím bất kỳ để gán làm phím nóng. Nhấn ESC để hủy.",
+        "currentHotkey": "Hiện tại: ",
+        "confirm": "Xác nhận",
+        "cancel": "Hủy",
+        "yes": "Đồng ý",
+        "no": "Không"
+    },
+    "masterUtility": {
+        "masterPlugins": "Plugin Kênh Tổng",
+        "quickKeySettings": "Cài đặt Phím tắt"
+    },
+    "masterPluginsWindow": {
+        "title": "Plugin Kênh Tổng"
+    },
+    "presetManagerWindow": {
+        "title": "Quản lý Preset",
+        "deleteButton": "Xóa Preset đã chọn",
+        "deleteTitle": "Xác nhận Xóa",
+        "deleteMessage": "Bạn có chắc chắn muốn xóa vĩnh viễn preset '{{presetName}}' không?"
+    },
+    "splash": {
+        "initManagers": "Đang khởi tạo các trình quản lý...",
+        "createWindow": "Đang tạo cửa sổ chính...",
+        "initAudio": "Đang khởi tạo thiết bị âm thanh...",
+        "finalizing": "Đang hoàn tất..."
+    },
+    "crash": {
+        "title": "Lỗi Ứng Dụng",
+        "message": "idolLiveAudio đã gặp một lỗi nghiêm trọng và cần phải đóng. Vui lòng sao chép báo cáo dưới đây và gửi đi để được hỗ trợ.",
+        "copyButton": "Sao chép Báo cáo"
+    }
+}

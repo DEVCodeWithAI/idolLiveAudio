@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<JUCERPROJECT id="zW6MGd" name="idolLiveAudio" projectType="guiapp" useAppConfig="0"
+              addUsingNamespaceToJuceHeader="1" jucerFormatVersion="1" cppLanguageStandard="20"
+              companyName="DEVCodeWithAI" companyCopyright="GPLv3" companyWebsite="www.devcodewithai.com"
+              companyEmail="dev.codewithai@gmail.com" userNotes="idolLiveAudio &#8211; Realtime Audio Plugin Host&#10;&#10;Developed with the assistance of AI (Gemini + ChatGPT)  &#10;Part of the DevCodeWithAI ecosystem: www.devcodewithai.com  &#10;&#10;Key Points:  &#10;- Supports Waves, Auto-Tune, VST3 plugins  &#10;- Created using JUCE framework (C++20)  &#10;- Open-source, GPLv3 licensed  &#10;- Real-world case of AI-assisted software development  &#10;- Designed to simplify professional audio processing for singers, streamers, and creators  &#10;&#10;This project demonstrates how AI collaboration can empower non-expert programmers to build usable, production-ready software across industries.&#10;&#10;For support, contributions, or technical discussion, visit:  &#10;www.devcodewithai.com  &#10;"
+              version="1.0.0">
+  <MAINGROUP id="B708Sa" name="idolLiveAudio">
+    <GROUP id="{AD963046-D105-7E97-82F8-04E24F432A02}" name="Resources">
+      <GROUP id="{08105253-0E21-EFD1-B951-19A48B0626BC}" name="Languages">
+        <FILE id="LtEDrR" name="lang_en.json" compile="0" resource="1" file="Resources/Languages/lang_en.json"/>
+        <FILE id="c64AQ4" name="lang_vi.json" compile="0" resource="1" file="Resources/Languages/lang_vi.json"/>
+      </GROUP>
+      <FILE id="etZReR" name="icon_128x128.png" compile="0" resource="1"
+            file="Resources/icon_128x128.png"/>
+      <FILE id="p0jcjU" name="icon_512x512.png" compile="0" resource="1"
+            file="Resources/icon_512x512.png"/>
+      <FILE id="FyxNAc" name="SplashScreen.png" compile="0" resource="1"
+            file="Resources/SplashScreen.png"/>
+    </GROUP>
+    <GROUP id="{861A1729-C73D-B95D-2F91-A03A42B14763}" name="Source">
+      <GROUP id="{01ED8153-D88C-BD90-665A-E82D24929235}" name="System">
+        <GROUP id="{D4D60E53-F5C5-044E-1194-02514DFAAED7}" name="CrashHandler">
+          <FILE id="orTVuE" name="CrashHandler.cpp" compile="1" resource="0"
+                file="Source/System/CrashHandler/CrashHandler.cpp"/>
+          <FILE id="HOu2W6" name="CrashHandler.h" compile="0" resource="0" file="Source/System/CrashHandler/CrashHandler.h"/>
+        </GROUP>
+      </GROUP>
+      <GROUP id="{E77A2C06-28F7-1C6E-9A8C-C921C2E790FF}" name="Components">
+        <FILE id="fflyPd" name="CustomLookAndFeel.cpp" compile="1" resource="0"
+              file="Source/Components/CustomLookAndFeel.cpp"/>
+        <FILE id="sMYdTA" name="CustomLookAndFeel.h" compile="0" resource="0"
+              file="Source/Components/CustomLookAndFeel.h"/>
+        <FILE id="NFH5Ky" name="Helpers.h" compile="0" resource="0" file="Source/Components/Helpers.h"/>
+        <FILE id="h5oOqV" name="LevelMeter.cpp" compile="1" resource="0" file="Source/Components/LevelMeter.cpp"/>
+        <FILE id="ssE61C" name="LevelMeter.h" compile="0" resource="0" file="Source/Components/LevelMeter.h"/>
+        <FILE id="VVH0XD" name="LockableHeader.cpp" compile="1" resource="0"
+              file="Source/Components/LockableHeader.cpp"/>
+        <FILE id="ylRYRC" name="LockableHeader.h" compile="0" resource="0"
+              file="Source/Components/LockableHeader.h"/>
+      </GROUP>
+      <GROUP id="{3E3506BA-0FCC-E4C9-5279-D85552AFD218}" name="GUI">
+        <GROUP id="{245BE511-90B6-7324-D1FE-457CB6D50C58}" name="Windows">
+          <FILE id="dHhupi" name="MasterPluginsWindow.cpp" compile="1" resource="0"
+                file="Source/GUI/Windows/MasterPluginsWindow.cpp"/>
+          <FILE id="IpEKcP" name="MasterPluginsWindow.h" compile="0" resource="0"
+                file="Source/GUI/Windows/MasterPluginsWindow.h"/>
+          <FILE id="JTQ1jM" name="PluginEditorWindow.h" compile="0" resource="0"
+                file="Source/GUI/Windows/PluginEditorWindow.h"/>
+          <FILE id="yTkkOu" name="PluginManagerWindow.cpp" compile="1" resource="0"
+                file="Source/GUI/Windows/PluginManagerWindow.cpp"/>
+          <FILE id="bMoQfR" name="PluginManagerWindow.h" compile="0" resource="0"
+                file="Source/GUI/Windows/PluginManagerWindow.h"/>
+          <FILE id="uK1Mkm" name="PresetManagerWindow.cpp" compile="1" resource="0"
+                file="Source/GUI/Windows/PresetManagerWindow.cpp"/>
+          <FILE id="k50uan" name="PresetManagerWindow.h" compile="0" resource="0"
+                file="Source/GUI/Windows/PresetManagerWindow.h"/>
+          <FILE id="xDVliV" name="QuickKeySettingsWindow.cpp" compile="1" resource="0"
+                file="Source/GUI/Windows/QuickKeySettingsWindow.cpp"/>
+          <FILE id="rpjzwa" name="QuickKeySettingsWindow.h" compile="0" resource="0"
+                file="Source/GUI/Windows/QuickKeySettingsWindow.h"/>
+          <FILE id="Jx79xF" name="SplashScreenComponent.cpp" compile="1" resource="0"
+                file="Source/GUI/Windows/SplashScreenComponent.cpp"/>
+          <FILE id="RtULAe" name="SplashScreenComponent.h" compile="0" resource="0"
+                file="Source/GUI/Windows/SplashScreenComponent.h"/>
+        </GROUP>
+        <GROUP id="{6C197B64-1A21-9713-2B9C-5DFB7B26FAC4}" name="Layout">
+          <FILE id="EP2ESL" name="MasterUtilityComponent.cpp" compile="1" resource="0"
+                file="Source/GUI/Layout/MasterUtilityComponent.cpp"/>
+          <FILE id="L6m8HA" name="MasterUtilityComponent.h" compile="0" resource="0"
+                file="Source/GUI/Layout/MasterUtilityComponent.h"/>
+          <FILE id="QVNUFc" name="MenubarComponent.cpp" compile="1" resource="0"
+                file="Source/GUI/Layout/MenubarComponent.cpp"/>
+          <FILE id="YQAU7j" name="MenubarComponent.h" compile="0" resource="0"
+                file="Source/GUI/Layout/MenubarComponent.h"/>
+          <FILE id="Rm4udN" name="PluginManagementComponent.cpp" compile="1"
+                resource="0" file="Source/GUI/Layout/PluginManagementComponent.cpp"/>
+          <FILE id="bkzIEi" name="PluginManagementComponent.h" compile="0" resource="0"
+                file="Source/GUI/Layout/PluginManagementComponent.h"/>
+          <FILE id="mjcyyd" name="PresetBarComponent.cpp" compile="1" resource="0"
+                file="Source/GUI/Layout/PresetBarComponent.cpp"/>
+          <FILE id="eNNoT3" name="PresetBarComponent.h" compile="0" resource="0"
+                file="Source/GUI/Layout/PresetBarComponent.h"/>
+          <FILE id="w4Km1W" name="SoundboardComponent.cpp" compile="1" resource="0"
+                file="Source/GUI/Layout/SoundboardComponent.cpp"/>
+          <FILE id="zypyaX" name="SoundboardComponent.h" compile="0" resource="0"
+                file="Source/GUI/Layout/SoundboardComponent.h"/>
+          <FILE id="dLGpjN" name="StatusBarComponent.cpp" compile="1" resource="0"
+                file="Source/GUI/Layout/StatusBarComponent.cpp"/>
+          <FILE id="DHi0Vw" name="StatusBarComponent.h" compile="0" resource="0"
+                file="Source/GUI/Layout/StatusBarComponent.h"/>
+          <FILE id="xPCB4v" name="TrackComponent.cpp" compile="1" resource="0"
+                file="Source/GUI/Layout/TrackComponent.cpp"/>
+          <FILE id="i5CBHG" name="TrackComponent.h" compile="0" resource="0"
+                file="Source/GUI/Layout/TrackComponent.h"/>
+        </GROUP>
+        <GROUP id="{A2E1730A-9908-58D8-F204-6CECFD39560F}" name="MainComponent">
+          <FILE id="pVDyGw" name="MainComponent.cpp" compile="1" resource="0"
+                file="Source/GUI/MainComponent/MainComponent.cpp"/>
+          <FILE id="BBPbxf" name="MainComponent.h" compile="0" resource="0" file="Source/GUI/MainComponent/MainComponent.h"/>
+        </GROUP>
+      </GROUP>
+      <GROUP id="{A664E37E-61BF-AD16-2D6E-02DD509A18A3}" name="Data">
+        <FILE id="h5A7Jm" name="PresetManager.cpp" compile="1" resource="0"
+              file="Source/Data/PresetManager.cpp"/>
+        <FILE id="Fdq8kd" name="PresetManager.h" compile="0" resource="0" file="Source/Data/PresetManager.h"/>
+        <FILE id="jlxpt6" name="CommandIDs.h" compile="0" resource="0" file="Source/Data/CommandIDs.h"/>
+        <FILE id="tdW4h1" name="SoundboardManager.cpp" compile="1" resource="0"
+              file="Source/Data/SoundboardManager.cpp"/>
+        <FILE id="KG6mRM" name="SoundboardManager.h" compile="0" resource="0"
+              file="Source/Data/SoundboardManager.h"/>
+        <FILE id="iT9fZW" name="SoundboardProfileManager.cpp" compile="1" resource="0"
+              file="Source/Data/SoundboardProfileManager.cpp"/>
+        <FILE id="geEKck" name="SoundboardProfileManager.h" compile="0" resource="0"
+              file="Source/Data/SoundboardProfileManager.h"/>
+        <FILE id="oyCSDZ" name="SoundboardSlot.h" compile="0" resource="0"
+              file="Source/Data/SoundboardSlot.h"/>
+        <FILE id="CtUaDT" name="AppState.cpp" compile="1" resource="0" file="Source/Data/AppState.cpp"/>
+        <FILE id="Xh9fvP" name="AppState.h" compile="0" resource="0" file="Source/Data/AppState.h"/>
+        <GROUP id="{047CFA3D-3A64-DB6F-B1FA-F15E65218052}" name="PluginManager">
+          <FILE id="Ih719k" name="PluginManager.cpp" compile="1" resource="0"
+                file="Source/Data/PluginManager/PluginManager.cpp"/>
+          <FILE id="Y7yByC" name="PluginManager.h" compile="0" resource="0" file="Source/Data/PluginManager/PluginManager.h"/>
+          <FILE id="lY4ga4" name="WavesShellManager.cpp" compile="1" resource="0"
+                file="Source/Data/PluginManager/WavesShellManager.cpp"/>
+          <FILE id="Yzqaec" name="WavesShellManager.h" compile="0" resource="0"
+                file="Source/Data/PluginManager/WavesShellManager.h"/>
+        </GROUP>
+        <GROUP id="{EA0E92D6-2BFB-7304-2D26-BEA48940A433}" name="PresetManager"/>
+        <GROUP id="{4242425C-19CC-C7F5-6DA1-5F025EB3C3E0}" name="LanguageManager">
+          <FILE id="GWVTYo" name="LanguageManager.cpp" compile="1" resource="0"
+                file="Source/Data/LanguageManager/LanguageManager.cpp"/>
+          <FILE id="HRn2HQ" name="LanguageManager.h" compile="0" resource="0"
+                file="Source/Data/LanguageManager/LanguageManager.h"/>
+        </GROUP>
+      </GROUP>
+      <GROUP id="{AD636BCD-AB4C-FE16-78B9-B75CD783E797}" name="AudioEngine">
+        <FILE id="mMkX1e" name="AudioEngine.cpp" compile="1" resource="0" file="Source/AudioEngine/AudioEngine.cpp"/>
+        <FILE id="ofIrng" name="AudioEngine.h" compile="0" resource="0" file="Source/AudioEngine/AudioEngine.h"/>
+        <FILE id="PCA8lk" name="MasterProcessor.cpp" compile="1" resource="0"
+              file="Source/AudioEngine/MasterProcessor.cpp"/>
+        <FILE id="LydS8Y" name="MasterProcessor.h" compile="0" resource="0"
+              file="Source/AudioEngine/MasterProcessor.h"/>
+        <FILE id="wAm8bP" name="ProcessorBase.cpp" compile="1" resource="0"
+              file="Source/AudioEngine/ProcessorBase.cpp"/>
+        <FILE id="TkYGcC" name="ProcessorBase.h" compile="0" resource="0" file="Source/AudioEngine/ProcessorBase.h"/>
+        <FILE id="NCWeIM" name="SoundPlayer.cpp" compile="1" resource="0" file="Source/AudioEngine/SoundPlayer.cpp"/>
+        <FILE id="YwbJZp" name="SoundPlayer.h" compile="0" resource="0" file="Source/AudioEngine/SoundPlayer.h"/>
+        <FILE id="vy605a" name="TrackProcessor.cpp" compile="1" resource="0"
+              file="Source/AudioEngine/TrackProcessor.cpp"/>
+        <FILE id="pOpEPA" name="TrackProcessor.h" compile="0" resource="0"
+              file="Source/AudioEngine/TrackProcessor.h"/>
+      </GROUP>
+      <GROUP id="{80F54C55-F400-127E-DEAE-B724F6DA5840}" name="Application">
+        <FILE id="CYk2sL" name="Application.cpp" compile="1" resource="0" file="Source/Application/Application.cpp"/>
+        <FILE id="vm3Kv3" name="Application.h" compile="0" resource="0" file="Source/Application/Application.h"/>
+      </GROUP>
+    </GROUP>
+  </MAINGROUP>
+  <MODULES>
+    <MODULE id="juce_audio_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_devices" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_formats" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_processors" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_audio_utils" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_core" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_data_structures" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_dsp" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_events" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_graphics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_gui_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_gui_extra" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+  </MODULES>
+  <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1" JUCE_ASIO="1" JUCE_PLUGINHOST_VST3="1"
+               JUCE_PLUGINHOST_VST="0"/>
+  <EXPORTFORMATS>
+    <VS2022 targetFolder="Builds/VisualStudio2022" smallIcon="etZReR" bigIcon="p0jcjU">
+      <CONFIGURATIONS>
+        <CONFIGURATION isDebug="1" name="Debug" targetName="idolLiveAudio" headerPath="E:/Project idol LIVE Audio/idolLiveAudio/Source&#10;C:/ASIO_SDK/common"/>
+        <CONFIGURATION isDebug="0" name="Release" targetName="idolLiveAudio" headerPath="$(projectDir)/Source&#10;C:/ASIO_SDK/common"/>
+      </CONFIGURATIONS>
+      <MODULEPATHS>
+        <MODULEPATH id="juce_audio_basics" path="C:/JUCE/modules"/>
+        <MODULEPATH id="juce_audio_devices" path="C:/JUCE/modules"/>
+        <MODULEPATH id="juce_audio_processors" path="C:/JUCE/modules"/>
+        <MODULEPATH id="juce_core" path="C:/JUCE/modules"/>
+        <MODULEPATH id="juce_data_structures" path="C:/JUCE/modules"/>
+        <MODULEPATH id="juce_events" path="C:/JUCE/modules"/>
+        <MODULEPATH id="juce_graphics" path="C:/JUCE/modules"/>
+        <MODULEPATH id="juce_gui_basics" path="C:/JUCE/modules"/>
+        <MODULEPATH id="juce_gui_extra" path="C:/JUCE/modules"/>
+        <MODULEPATH id="juce_audio_utils" path="C:/JUCE/modules"/>
+        <MODULEPATH id="juce_audio_formats" path="C:/JUCE/modules"/>
+        <MODULEPATH id="juce_dsp" path="C:/JUCE/modules"/>
+      </MODULEPATHS>
+    </VS2022>
+  </EXPORTFORMATS>
+</JUCERPROJECT>

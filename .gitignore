@@ -1,0 +1,21 @@
+# Build artifacts
+Build/
+bin/
+*.obj
+*.exe
+*.dll
+*.pdb
+*.lib
+*.so
+*.dylib
+
+# IDE configs
+.idea/
+.vscode/
+*.sln
+*.vcxproj*
+*.user
+*.DS_Store
+
+# JUCE BinaryData (Optional)
+BinaryData.*

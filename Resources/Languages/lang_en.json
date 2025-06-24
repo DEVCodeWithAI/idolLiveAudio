@@ -1,0 +1,131 @@
+{
+    "menubar": {
+        "audioSystem": "Audio System:",
+        "device": "Device:",
+        "appOutput": "App Output:",
+        "asioPanel": "ASIO Panel",
+        "voicemeeterPanel": "Voicemeeter Panel",
+        "audioSettings": "Audio Settings...",
+        "selectSystem": "Select System...",
+        "selectDevice": "Select Device...",
+        "noOutput": "No Output",
+        "outputChannels": "Output:"
+    },
+    "presetbar": {
+        "presetRunning": "Preset Running:",
+        "quickChoice": "Quick Choice:",
+        "load": "Load",
+        "noPresetLoaded": "No Preset Loaded",
+        "overwriteTitle": "Overwrite Preset",
+        "overwriteMessage": "A preset named '{{presetName}}' already exists. Do you want to overwrite it?",
+        "saveAsTitle": "Save Preset As...",
+        "yes": "Yes",
+        "no": "No"
+    },
+    "tracks": {
+        "vocal": "VOCAL",
+        "music": "MUSIC",
+        "input": "Input:",
+        "mute": "MUTE",
+        "muted": "MUTED",
+        "activePlugins": "Active Plugins",
+        "addPluginPlaceholder": "Add Plugin...",
+        "add": "Add",
+        "pleaseSelectDevice": "Please select an audio device"
+    },
+    "pinnedPlugin": {
+        "title": "PINNED PLUGIN",
+        "placeholder": "Plugin UI Appears Here",
+        "selectToPin": "Pin Plugin..."
+    },
+    "managers": {
+        "presetManager": "PRESET MANAGER",
+        "savePreset": "Save Current Preset",
+        "managePresets": "Manage Presets"
+    },
+    "pluginManagement": {
+        "scan": "Scan System for Plugins",
+        "add": "Add Plugin from File...",
+        "manage": "Manage Plugins..."
+    },
+    "statusbar": {
+        "mute": "Mute Master Output",
+        "unmute": "Unmute Master Output",
+        "muteText": "MUTE",
+        "mutedText": "MUTED",
+        "masterVolumeLabel": "Master Volume:"
+    },
+    "soundboard": {
+        "title": "SOUNDBOARD",
+        "volume": "Volume:",
+        "enabled": "ENABLED",
+        "disabled": "DISABLED",
+        "stop": "STOP ALL"
+    },
+    "tooltips": {
+        "lock": "Lock Controls",
+        "unlock": "Unlock Controls"
+    },
+    "alerts": {
+        "asio4allNotFoundTitle": "ASIO4ALL Not Found",
+        "asio4allNotFoundMessage": "ASIO4ALL control panel could not be found at the default installation path. Please make sure it is installed.",
+        "cleanProfileConfirmTitle": "Confirm Clean Profile",
+        "cleanProfileConfirmMessage": "This will permanently delete all assigned sounds and hotkeys for the current profile. This action cannot be undone. Are you sure?",
+        "pluginUiDisabledTitle": "Plugin UI Disabled",
+        "pluginUiDisabledMessage": "The editor for this plugin is incompatible with idolLiveAudio and has been disabled to prevent a crash. The plugin's audio is still being processed.",
+        "saveChangesTitle": "Unsaved Changes",
+        "saveChangesMessage": "You have unsaved changes. Do you want to save them to a new preset before continuing?",
+        "saveButton": "Save As...",
+        "dontSaveButton": "Don't Save",
+        "cancelButton": "Cancel"
+    },
+    "pluginManagerWindow": {
+        "title": "Plugin Manager",
+        "scan": "Scan for new Plugins",
+        "add": "Add Plugin from file...",
+        "remove": "Remove selected"
+    },
+    "quickKeySettingsWindow": {
+        "cancel": "Cancel",
+        "cleanProfile": "Clean Profile",
+        "confirm": "Confirm",
+        "currentHotkey": "Current: ",
+        "exportProfile": "Export Profile...",
+        "fileLabel": "Audio File:",
+        "hotkeyLabel": "Hotkey:",
+        "hotkeyPromptMessage": "Press any key combination to assign it as the hotkey. Press ESC to cancel.",
+        "hotkeyPromptTitle": "Set Hotkey",
+        "importProfile": "Import Profile...",
+        "noFile": "Assign File...",
+        "noHotkey": "Set Hotkey...",
+        "saveProfile": "Save Profile",
+        "slotNameLabel": "Name:",
+        "title": "Quick Key & Soundboard Settings",
+        "yes": "Yes",
+        "no": "No"
+    },
+    "masterUtility": {
+        "masterPlugins": "Master Plugins",
+        "quickKeySettings": "QuickKey Settings"
+    },
+    "masterPluginsWindow": {
+        "title": "Master Channel Plugins"
+    },
+    "presetManagerWindow": {
+        "title": "Preset Manager",
+        "deleteButton": "Delete Selected Preset",
+        "deleteTitle": "Confirm Deletion",
+        "deleteMessage": "Are you sure you want to permanently delete the preset '{{presetName}}'?"
+    },
+    "splash": {
+        "initManagers": "Initializing managers...",
+        "createWindow": "Creating main window...",
+        "initAudio": "Initializing audio device...",
+        "finalizing": "Finalizing..."
+    },
+    "crash": {
+        "title": "Application Error",
+        "message": "idolLiveAudio has encountered a critical error and needs to close. Please copy the report below and submit it for support.",
+        "copyButton": "Copy Report"
+    }
+}
