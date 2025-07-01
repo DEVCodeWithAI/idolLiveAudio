@@ -1,9 +1,8 @@
-﻿#pragma once
+#pragma once
 
 #include <JuceHeader.h>
 #include "../../AudioEngine/MasterProcessor.h"
 #include "../../Data/LanguageManager/LanguageManager.h"
-#include "../../Application/Application.h"
 #include "../Layout/TrackComponent.h" 
 
 class MasterPluginsWindow : public juce::DocumentWindow

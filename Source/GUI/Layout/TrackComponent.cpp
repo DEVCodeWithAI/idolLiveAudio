@@ -2,7 +2,7 @@
   ==============================================================================
 
     TrackComponent.cpp
-    (Implementing robust plugin search and list restoration - FINAL)
+    (Layout Fix for FX Controls)
 
   ==============================================================================
 */
@@ -186,6 +186,44 @@ TrackComponent::TrackComponent(const juce::String& trackNameKey, const juce::Col
     addAndMakeVisible(muteButton);
     addAndMakeVisible(volumeSlider);
     addAndMakeVisible(levelMeter);
+
+    addAndMakeVisible(fxSectionLabel);
+    fxSectionLabel.setJustificationType(juce::Justification::centred);
+    fxSectionLabel.setFont(IdolUIHelpers::createRegularFont(15.0f));
+
+    for (int i = 0; i < 4; ++i)
+    {
+        addAndMakeVisible(fxButtons[i]);
+        fxButtons[i].setButtonText("FX " + juce::String(i + 1));
+        const int index = i;
+        fxButtons[i].onClick = [this, index] { openFxWindow(index); };
+
+        // <<< MODIFIED: Using TextButton and managing state manually >>>
+        addAndMakeVisible(fxMuteButtons[i]);
+        fxMuteButtons[i].setClickingTogglesState(true);
+        fxMuteButtons[i].setColour(juce::TextButton::buttonOnColourId, juce::Colours::red.withAlpha(0.9f));
+        fxMuteButtons[i].onClick = [this, index]
+            {
+                if (audioEngine == nullptr) return;
+
+                ProcessorBase* fxProcessor = nullptr;
+                if (channelType == ChannelType::Vocal)
+                    fxProcessor = audioEngine->getFxProcessorForVocal(index);
+                else
+                    fxProcessor = audioEngine->getFxProcessorForMusic(index);
+
+                if (fxProcessor != nullptr)
+                {
+                    const bool isNowMuted = fxMuteButtons[index].getToggleState();
+                    fxProcessor->setMuted(isNowMuted);
+
+                    // Manually update text to reflect state
+                    auto& lang = LanguageManager::getInstance();
+                    fxMuteButtons[index].setButtonText(isNowMuted ? lang.get("tracks.muted") : lang.get("tracks.mute"));
+                }
+            };
+    }
+
     addAndMakeVisible(pluginListLabel);
     addAndMakeVisible(pluginListBox);
 
@@ -228,6 +266,16 @@ TrackComponent::TrackComponent(const juce::String& trackNameKey, const juce::Col
 
 TrackComponent::~TrackComponent()
 {
+    // Explicitly destroy any open FX chain windows owned by this component.
+    // This ensures their contents (including plugin editors) are destroyed
+    // in the correct order before the AudioEngine is torn down.
+    for (int i = 0; i < fxWindows.size(); ++i)
+    {
+        if (fxWindows[i] != nullptr)
+            fxWindows[i]->setVisible(false);
+        fxWindows[i] = nullptr;
+    }
+
     openPluginWindows.clear();
     LanguageManager::getInstance().removeChangeListener(this);
     getSharedPluginManager().removeChangeListener(this);
@@ -243,51 +291,127 @@ void TrackComponent::paint(juce::Graphics& g)
     g.fillAll(juce::Colour(0xff2d2d2d));
     g.setColour(juce::Colours::black.withAlpha(0.5f));
     g.drawRect(getLocalBounds(), 1);
+
     auto bounds = getLocalBounds().reduced(10);
     bounds.removeFromTop(40 + 10);
-    auto inputSectionBounds = bounds.removeFromTop(120);
+
+    const int topSectionHeight = 120 + 80;
+    auto topSectionBounds = bounds.removeFromTop(topSectionHeight);
+
     g.setColour(juce::Colour(0xff212121));
-    g.fillRoundedRectangle(inputSectionBounds.toFloat(), 8.0f);
-    g.setColour(juce::Colour(0xff3a3a3a));
-    g.drawRoundedRectangle(inputSectionBounds.toFloat(), 8.0f, 1.0f);
+    g.fillRoundedRectangle(topSectionBounds.toFloat(), 8.0f);
     bounds.removeFromTop(10);
-    auto pluginSectionBounds = bounds;
-    g.setColour(juce::Colour(0xff212121));
-    g.fillRoundedRectangle(pluginSectionBounds.toFloat(), 8.0f);
+    g.fillRoundedRectangle(bounds.toFloat(), 8.0f);
+
     g.setColour(juce::Colour(0xff3a3a3a));
-    g.drawRoundedRectangle(pluginSectionBounds.toFloat(), 8.0f, 1.0f);
+    g.drawRoundedRectangle(topSectionBounds.toFloat(), 8.0f, 1.0f);
+    g.drawRoundedRectangle(bounds.toFloat(), 8.0f, 1.0f);
 }
 
+// <<< MODIFIED: Rewrote resized() for clarity and robustness >>>
 void TrackComponent::resized()
 {
-    auto bounds = getLocalBounds().reduced(10);
-    auto headerBounds = bounds.removeFromTop(40);
-    trackLabel.setBounds(headerBounds);
-    bounds.removeFromTop(10);
-    auto inputSectionBounds = bounds.removeFromTop(120).reduced(10);
-    auto inputLine1 = inputSectionBounds.removeFromTop(30);
-    inputChannelLabel.setBounds(inputLine1.removeFromLeft(80));
-    inputLine1.removeFromLeft(10);
-    inputChannelSelector.setBounds(inputLine1);
-    inputSectionBounds.removeFromTop(5);
-    auto inputLine2 = inputSectionBounds.removeFromTop(30);
-    lockButton.setBounds(inputLine2.removeFromLeft(30));
-    inputLine2.removeFromLeft(10);
-    muteButton.setBounds(inputLine2.removeFromLeft(80));
-    inputLine2.removeFromLeft(10);
-    volumeSlider.setBounds(inputLine2.reduced(0, 5));
-    inputSectionBounds.removeFromTop(5);
-    auto inputLine3 = inputSectionBounds.removeFromTop(20);
-    levelMeter.setBounds(inputLine3);
-    bounds.removeFromTop(10);
-    auto pluginSectionBounds = bounds.reduced(10);
-    pluginListLabel.setBounds(pluginSectionBounds.removeFromTop(30));
-    auto addPluginArea = pluginSectionBounds.removeFromBottom(30);
-    pluginSectionBounds.removeFromBottom(10);
-    pluginListBox.setBounds(pluginSectionBounds);
-    addButton.setBounds(addPluginArea.removeFromRight(80));
-    addPluginArea.removeFromRight(10);
-    addPluginSelector.setBounds(addPluginArea);
+    auto bounds = getLocalBounds();
+    const int padding = 10;
+    bounds.reduce(padding, padding);
+
+    const int headerHeight = 40;
+    const int topControlsHeight = 120;
+    const int fxControlsHeight = 80;
+
+    auto headerArea = bounds.removeFromTop(headerHeight);
+    bounds.removeFromTop(padding);
+    auto topControlsArea = bounds.removeFromTop(topControlsHeight);
+    bounds.removeFromTop(5);
+    auto fxArea = bounds.removeFromTop(fxControlsHeight);
+    bounds.removeFromTop(padding);
+    auto pluginArea = bounds;
+
+    trackLabel.setBounds(headerArea);
+
+    {
+        auto topBounds = topControlsArea.reduced(padding, 0);
+
+        auto inputLine1 = topBounds.removeFromTop(30);
+        inputChannelLabel.setBounds(inputLine1.removeFromLeft(80));
+        inputLine1.removeFromLeft(padding);
+        inputChannelSelector.setBounds(inputLine1);
+        topBounds.removeFromTop(5);
+
+        auto inputLine2 = topBounds.removeFromTop(30);
+        lockButton.setBounds(inputLine2.removeFromLeft(30));
+        inputLine2.removeFromLeft(padding);
+        muteButton.setBounds(inputLine2.removeFromLeft(80));
+        inputLine2.removeFromLeft(padding);
+        volumeSlider.setBounds(inputLine2.reduced(0, 5));
+        topBounds.removeFromTop(5);
+
+        levelMeter.setBounds(topBounds.removeFromTop(20));
+    }
+
+    {
+        auto fxBounds = fxArea.reduced(padding, 0);
+        fxSectionLabel.setBounds(fxBounds.removeFromTop(25));
+
+        const int buttonWidth = (fxBounds.getWidth() - (3 * 5)) / 4;
+        const int muteButtonHeight = 25;
+        const int fxButtonHeight = fxBounds.getHeight() - muteButtonHeight - 5;
+
+        int currentX = fxBounds.getX();
+
+        for (int i = 0; i < 4; ++i)
+        {
+            fxButtons[i].setBounds(currentX, fxBounds.getY(), buttonWidth, fxButtonHeight);
+            fxMuteButtons[i].setBounds(currentX, fxButtons[i].getBottom() + 5, buttonWidth, muteButtonHeight);
+            currentX += buttonWidth + 5;
+        }
+    }
+
+    {
+        auto pluginBounds = pluginArea.reduced(padding);
+        pluginListLabel.setBounds(pluginBounds.removeFromTop(30));
+        auto addPluginArea = pluginBounds.removeFromBottom(30);
+        pluginBounds.removeFromBottom(padding);
+        pluginListBox.setBounds(pluginBounds);
+
+        addButton.setBounds(addPluginArea.removeFromRight(80));
+        addPluginArea.removeFromRight(padding);
+        addPluginSelector.setBounds(addPluginArea);
+    }
+}
+
+void TrackComponent::openFxWindow(int index)
+{
+    if (!isPositiveAndBelow(index, 4))
+        return;
+
+    if (fxWindows[index] != nullptr)
+    {
+        fxWindows[index]->toFront(true);
+        return;
+    }
+
+    if (audioEngine == nullptr)
+    {
+        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon, "Error", "AudioEngine not available.");
+        return;
+    }
+
+    ProcessorBase* targetFxProcessor = nullptr;
+    if (channelType == ChannelType::Vocal)
+        targetFxProcessor = audioEngine->getFxProcessorForVocal(index);
+    else
+        targetFxProcessor = audioEngine->getFxProcessorForMusic(index);
+
+    if (targetFxProcessor == nullptr)
+    {
+        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon, "Error", "Target FX processor is null.");
+        return;
+    }
+
+    auto windowName = trackLabel.getText() + " - FX " + juce::String(index + 1);
+    auto* newWindow = new FXChainWindow(windowName, *targetFxProcessor);
+    fxWindows[index] = newWindow;
 }
 
 void TrackComponent::changeListenerCallback(juce::ChangeBroadcaster* source)
@@ -308,7 +432,6 @@ void TrackComponent::changeListenerCallback(juce::ChangeBroadcaster* source)
     }
 }
 
-// <<< MODIFIED: New robust logic for the callback >>>
 void TrackComponent::comboBoxChanged(juce::ComboBox* comboBoxThatHasChanged)
 {
     if (isUpdatingFromTextChange)
@@ -316,9 +439,6 @@ void TrackComponent::comboBoxChanged(juce::ComboBox* comboBoxThatHasChanged)
 
     if (comboBoxThatHasChanged == &addPluginSelector)
     {
-        // A selected ID of 0 means the user has typed text that doesn't
-        // perfectly match an item, or they have cleared the text box.
-        // This is our cue to update the filtered list.
         if (addPluginSelector.getSelectedId() == 0)
         {
             updatePluginSelector(addPluginSelector.getText());
@@ -358,10 +478,28 @@ void TrackComponent::addSelectedPlugin()
         if (desc.uniqueId == selectedUniqueId)
         {
             const auto spec = processor->getProcessSpec();
-            if (auto instance = getSharedPluginManager().createPluginInstance(desc, spec))
+            try
             {
-                instance->addListener(this);
-                processor->addPlugin(std::move(instance));
+                if (auto instance = getSharedPluginManager().createPluginInstance(desc, spec))
+                {
+                    instance->addListener(this);
+                    processor->addPlugin(std::move(instance));
+                }
+                else
+                {
+                    juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
+                        "Plugin Error", "Failed to create plugin instance.");
+                }
+            }
+            catch (const std::exception& e)
+            {
+                juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
+                    "Plugin Exception", "Error: " + juce::String(e.what()));
+            }
+            catch (...)
+            {
+                juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
+                    "Plugin Exception", "An unknown error occurred while adding plugin.");
             }
 
             addPluginSelector.setText({}, juce::dontSendNotification);
@@ -463,17 +601,58 @@ void TrackComponent::setAudioEngine(AudioEngine* engine) { audioEngine = engine;
 
 void TrackComponent::populateInputChannels(const juce::StringArray& channelNames, const juce::Array<int>& channelIndices)
 {
+    // <<< FIX STARTS HERE >>>
+
+    // 1. Get the "ground truth" - what channel name is the audio engine currently using?
+    juce::String currentChannelName;
+    if (audioEngine != nullptr)
+    {
+        if (channelType == ChannelType::Vocal)
+            currentChannelName = audioEngine->getVocalInputChannelName();
+        else
+            currentChannelName = audioEngine->getMusicInputChannelName();
+    }
+
+    // 2. Temporarily disable the onChange callback to prevent it from firing while we rebuild the list.
     juce::ScopedValueSetter<std::function<void()>> svs(inputChannelSelector.onChange, nullptr);
+
     inputChannelSelector.clear(juce::dontSendNotification);
     availableChannelIndices = channelIndices;
+
+    int newIdToSelect = -1;
+
+    // 3. Repopulate the list and try to find an item that matches the engine's current channel name.
     for (int i = 0; i < channelNames.size(); ++i)
     {
-        inputChannelSelector.addItem(channelNames[i], i + 1);
+        const int itemId = i + 1;
+        inputChannelSelector.addItem(channelNames[i], itemId);
+        if (channelNames[i].isNotEmpty() && channelNames[i] == currentChannelName)
+        {
+            newIdToSelect = itemId; // Found a match!
+        }
     }
-    if (!channelNames.isEmpty())
+
+    // 4. Decide which item to select in the UI.
+    if (newIdToSelect != -1)
     {
-        inputChannelSelector.setSelectedId(1, juce::sendNotificationAsync);
+        // If we found a match, restore the selection.
+        inputChannelSelector.setSelectedId(newIdToSelect, juce::dontSendNotification);
     }
+    else if (!channelNames.isEmpty())
+    {
+        // Otherwise, if the list is not empty, default to the first item.
+        inputChannelSelector.setSelectedId(1, juce::dontSendNotification);
+    }
+
+    // 5. Now that the UI is correct, directly call the original onChange lambda
+    //    to ensure the AudioEngine is synchronized with the final selection.
+    //    This is safer than relying on notifications.
+    if (inputChannelSelector.onChange != nullptr)
+    {
+        inputChannelSelector.onChange();
+    }
+
+    // <<< FIX ENDS HERE >>>
 }
 
 void TrackComponent::setSelectedInputChannelByName(const juce::String& channelName)
@@ -498,6 +677,27 @@ void TrackComponent::updateTexts()
     pluginListLabel.setText(lang.get("tracks.activePlugins"), juce::dontSendNotification);
     addButton.setButtonText(lang.get("tracks.add"));
     addPluginSelector.setTextWhenNothingSelected(lang.get("tracks.addPluginPlaceholder"));
+
+    fxSectionLabel.setText(lang.get("tracks.fxSends"), juce::dontSendNotification);
+    for (int i = 0; i < 4; ++i)
+    {
+        // <<< MODIFIED: Update text based on processor state >>>
+        bool isMuted = false;
+        if (audioEngine)
+        {
+            ProcessorBase* fxProcessor = nullptr;
+            if (channelType == ChannelType::Vocal)
+                fxProcessor = audioEngine->getFxProcessorForVocal(i);
+            else
+                fxProcessor = audioEngine->getFxProcessorForMusic(i);
+
+            if (fxProcessor)
+                isMuted = fxProcessor->isMuted();
+        }
+        fxMuteButtons[i].setToggleState(isMuted, juce::dontSendNotification);
+        fxMuteButtons[i].setButtonText(isMuted ? lang.get("tracks.muted") : lang.get("tracks.mute"));
+    }
+
     repaint();
 }
 

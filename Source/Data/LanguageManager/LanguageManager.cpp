@@ -3,15 +3,13 @@
 //==============================================================================
 LanguageManager& LanguageManager::getInstance()
 {
-    // Tạo một thực thể tĩnh duy nhất
     static LanguageManager instance;
     return instance;
 }
 
 LanguageManager::LanguageManager()
 {
-    // Mặc định tải tiếng Anh khi khởi động
-    loadLanguage("en");
+    loadLanguage("en"); // Mặc định tải tiếng Anh khi khởi động
 }
 
 LanguageManager::~LanguageManager()
@@ -21,40 +19,50 @@ LanguageManager::~LanguageManager()
 //==============================================================================
 void LanguageManager::loadLanguage(const juce::String& languageCode)
 {
-    // Tìm file ngôn ngữ trong BinaryData được tạo ra từ thư mục Resources
-    int dataSize = 0;
-    const char* data = nullptr;
-
+    juce::String resourceName;
     if (languageCode == "vi")
-        data = BinaryData::getNamedResource("lang_vi_json", dataSize);
-    else // Mặc định là tiếng Anh
-        data = BinaryData::getNamedResource("lang_en_json", dataSize);
+        resourceName = "lang_vi_json";
+    else
+        resourceName = "lang_en_json";
+
+    int dataSize = 0;
+    const char* data = BinaryData::getNamedResource(resourceName.toRawUTF8(), dataSize);
 
     if (data != nullptr)
     {
-        // Phân tích chuỗi JSON thành đối tượng juce::var
-        juce::JSON::parse(juce::String::fromUTF8(data, dataSize), languageData);
+        juce::var parsedJson;
+        auto result = juce::JSON::parse(juce::String::fromUTF8(data, dataSize), parsedJson);
 
-        // Thông báo cho các thành phần khác rằng ngôn ngữ đã thay đổi
-        sendChangeMessage();
+        if (result.wasOk())
+        {
+            languageData = parsedJson;
+            sendChangeMessage(); // Thông báo cho các thành phần khác rằng ngôn ngữ đã thay đổi
+        }
+        else
+        {
+            DBG("LanguageManager - FAILED to parse JSON for language: " + languageCode);
+        }
     }
     else
     {
-        // Nếu không tìm thấy file, báo lỗi
-        DBG("Could not load language file for code: " + languageCode);
+        // <<< FIXED: Corrected the debug loop to use valid BinaryData members >>>
+        DBG("LanguageManager - FAILED to find resource: " + resourceName);
+        DBG("Please ensure the .json files are added to the Binary Resources in the Projucer.");
+        DBG("Available resources are:");
+        for (int i = 0; i < BinaryData::namedResourceListSize; ++i)
+        {
+            DBG("  - " + juce::String(BinaryData::namedResourceList[i]));
+        }
     }
 }
 
 juce::String LanguageManager::get(const juce::String& key)
 {
-    // Key có dạng "group.subgroup.key"
-    // Ví dụ: "menubar.audioDevice"
     juce::StringArray keys;
     keys.addTokens(key, ".", "");
 
     juce::var currentVar = languageData;
 
-    // Duyệt qua cây JSON để tìm giá trị
     for (const auto& k : keys)
     {
         if (currentVar.isObject())
@@ -63,11 +71,9 @@ juce::String LanguageManager::get(const juce::String& key)
         }
         else
         {
-            // Nếu không tìm thấy key, trả về key gốc để dễ dàng debug
             return key;
         }
     }
 
-    // Trả về giá trị dưới dạng String
     return currentVar.toString();
 }

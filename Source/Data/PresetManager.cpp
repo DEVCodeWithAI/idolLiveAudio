@@ -1,9 +1,6 @@
 #include "PresetManager.h"
 #include "../AudioEngine/AudioEngine.h"
 
-// <<< FIX >>> The Identifiers namespace has been moved to PresetManager.h
-// It is no longer defined here.
-
 PresetManager::PresetManager() {}
 PresetManager::~PresetManager() {}
 
@@ -20,13 +17,26 @@ juce::File PresetManager::getPresetDirectory()
     return presetDir;
 }
 
+// <<< MODIFIED: Now saves the state of all 8 FX processors >>>
 void PresetManager::savePreset(AudioEngine& engine, const juce::File& file)
 {
     juce::ValueTree presetState(Identifiers::Preset);
 
+    // Save main processors
     presetState.addChild(engine.getVocalProcessor().getState(), -1, nullptr);
     presetState.addChild(engine.getMusicProcessor().getState(), -1, nullptr);
     presetState.addChild(engine.getMasterProcessor().getState(), -1, nullptr);
+
+    // Save FX processors
+    for (int i = 0; i < 4; ++i)
+    {
+        if (auto* vocalFx = engine.getFxProcessorForVocal(i))
+            presetState.addChild(vocalFx->getState(), -1, nullptr);
+        if (auto* musicFx = engine.getFxProcessorForMusic(i))
+            presetState.addChild(musicFx->getState(), -1, nullptr);
+    }
+    
+    // TODO: Save Send/Return levels here in the future
 
     if (auto xml = std::unique_ptr<juce::XmlElement>(presetState.createXml()))
     {
@@ -34,6 +44,7 @@ void PresetManager::savePreset(AudioEngine& engine, const juce::File& file)
     }
 }
 
+// <<< MODIFIED: Now loads the state of all 8 FX processors >>>
 void PresetManager::loadPreset(AudioEngine& engine, const juce::File& file)
 {
     if (!file.existsAsFile())
@@ -49,6 +60,7 @@ void PresetManager::loadPreset(AudioEngine& engine, const juce::File& file)
 
         if (presetState.hasType(Identifiers::Preset))
         {
+            // Load main processors
             auto vocalState = presetState.getChildWithName(Identifiers::VocalProcessorState);
             if (vocalState.isValid())
                 engine.getVocalProcessor().setState(vocalState);
@@ -60,6 +72,27 @@ void PresetManager::loadPreset(AudioEngine& engine, const juce::File& file)
             auto masterState = presetState.getChildWithName(Identifiers::MasterProcessorState);
             if (masterState.isValid())
                 engine.getMasterProcessor().setState(masterState);
+
+            // Load FX processors
+            const juce::Identifier fxIds[] = {
+                Identifiers::VocalFx1State, Identifiers::VocalFx2State, Identifiers::VocalFx3State, Identifiers::VocalFx4State,
+                Identifiers::MusicFx1State, Identifiers::MusicFx2State, Identifiers::MusicFx3State, Identifiers::MusicFx4State
+            };
+
+            for (int i = 0; i < 4; ++i)
+            {
+                auto vocalFxState = presetState.getChildWithName(fxIds[i]);
+                if (vocalFxState.isValid())
+                    if (auto* proc = engine.getFxProcessorForVocal(i))
+                        proc->setState(vocalFxState);
+
+                auto musicFxState = presetState.getChildWithName(fxIds[i + 4]);
+                if (musicFxState.isValid())
+                     if (auto* proc = engine.getFxProcessorForMusic(i))
+                        proc->setState(musicFxState);
+            }
+            
+            // TODO: Load Send/Return levels here in the future
         }
     }
     else

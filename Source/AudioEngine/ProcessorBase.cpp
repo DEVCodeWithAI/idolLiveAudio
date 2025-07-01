@@ -1,16 +1,17 @@
-﻿/*
+/*
   ==============================================================================
 
     ProcessorBase.cpp
-    (Definitive fix with full initialization logic in setState)
+    (Definitive fix with full initialization logic in setState and safe removal)
 
   ==============================================================================
 */
 
 #include "AudioEngine/ProcessorBase.h"
 #include "../Application/Application.h" 
-#include "../Data/AppState.h" // <<< NEW: Include AppState to set the dirty flag
+#include "../Data/AppState.h"
 
+// <<< ADDED: Identifiers for new properties >>>
 namespace IDs
 {
     const juce::Identifier PLUGIN_CHAIN("PluginChain");
@@ -18,12 +19,46 @@ namespace IDs
     const juce::Identifier uid("uid");
     const juce::Identifier state("state");
     const juce::Identifier bypassed("bypassed");
+    
+    const juce::Identifier sendLevel("sendLevel");
+    const juce::Identifier returnLevel("returnLevel");
 }
 
 ProcessorBase::ProcessorBase(const juce::Identifier& id)
     : processorId(id)
 {
     gain.setGainDecibels(0.0f);
+}
+
+ProcessorBase::~ProcessorBase()
+{
+    const juce::ScopedLock sl(pluginLock);
+    DBG("ProcessorBase Destructor called for '" << processorId.toString() << "'");
+
+    for (int i = pluginChain.size(); --i >= 0;)
+    {
+        if (auto* plugin = pluginChain.getUnchecked(i))
+        {
+            try
+            {
+                DBG("Suspending plugin before destruction: " << plugin->getName());
+                plugin->suspendProcessing(true);
+
+                const auto name = plugin->getName().toLowerCase();
+                if (name.contains("waves") || name.contains("wave"))
+                {
+                    DBG("Detected Waves plugin. Sleeping for safe shutdown...");
+                    juce::Thread::sleep(500);
+                }
+            }
+            catch (...)
+            {
+                DBG("Exception during plugin suspend in destructor.");
+            }
+        }
+    }
+
+    pluginChain.clear();
 }
 
 void ProcessorBase::prepare(const juce::dsp::ProcessSpec& spec)
@@ -46,6 +81,7 @@ void ProcessorBase::prepare(const juce::dsp::ProcessSpec& spec)
     reset();
 }
 
+// <<< MODIFIED: setState now loads send/return levels >>>
 void ProcessorBase::setState(const juce::ValueTree& newState)
 {
     const juce::ScopedLock sl(pluginLock);
@@ -56,6 +92,10 @@ void ProcessorBase::setState(const juce::ValueTree& newState)
             << "'. The processor has not been prepared yet (Sample Rate is 0).");
         return;
     }
+
+    // Load send/return levels
+    setSendLevel(newState.getProperty(IDs::sendLevel, 1.0f));
+    setReturnLevel(newState.getProperty(IDs::returnLevel, 1.0f));
 
     pluginChain.clear();
     pluginBypassState.clear();
@@ -90,7 +130,6 @@ void ProcessorBase::setState(const juce::ValueTree& newState)
         {
             instance->suspendProcessing(true);
 
-            // <<< USER'S SUGGESTION IMPLEMENTED: Full Bus Layout Negotiation >>>
             const auto pluginName = instance->getName().toLowerCase();
             const bool isPickyPlugin = pluginName.contains("auto-tune") || pluginName.contains("antares");
             bool layoutSet = false;
@@ -161,11 +200,17 @@ void ProcessorBase::setState(const juce::ValueTree& newState)
     sendChangeMessage();
 }
 
+// <<< MODIFIED: getState now saves send/return levels >>>
 juce::ValueTree ProcessorBase::getState() const
 {
     const juce::ScopedLock sl(pluginLock);
 
     juce::ValueTree state(processorId);
+    
+    // Save send/return levels
+    state.setProperty(IDs::sendLevel, getSendLevel(), nullptr);
+    state.setProperty(IDs::returnLevel, getReturnLevel(), nullptr);
+    
     juce::ValueTree pluginChainState(IDs::PLUGIN_CHAIN);
     state.addChild(pluginChainState, -1, nullptr);
 
@@ -310,7 +355,6 @@ void ProcessorBase::addPlugin(std::unique_ptr<juce::AudioPluginInstance> newPlug
 
     pluginChain.add(std::move(newPlugin));
 
-    // <<< FIX >>>
     AppState::getInstance().setPresetDirty(true);
     sendChangeMessage();
 }
@@ -326,15 +370,47 @@ void ProcessorBase::reset()
 void ProcessorBase::removePlugin(int index)
 {
     const juce::ScopedLock sl(pluginLock);
-    if (isPositiveAndBelow(index, pluginChain.size()))
-    {
-        pluginBypassState.erase(index);
-        pluginChain.remove(index);
+    if (!isPositiveAndBelow(index, pluginChain.size()))
+        return;
 
-        // <<< FIX >>>
-        AppState::getInstance().setPresetDirty(true);
-        sendChangeMessage();
+    if (auto* plugin = pluginChain.getUnchecked(index))
+    {
+        try
+        {
+            DBG("Preparing to safely remove plugin: " << plugin->getName());
+
+            // Ngắt xử lý audio trước
+            plugin->suspendProcessing(true);
+
+            // Nếu là Waves, chờ nhẹ cho thread nền shutdown
+            const auto name = plugin->getName().toLowerCase();
+            if (name.contains("waves") || name.contains("wave"))
+            {
+                DBG("Detected Waves plugin. Sleeping briefly to allow thread cleanup...");
+                juce::Thread::sleep(500);
+            }
+
+            // Đóng tất cả editor liên quan (nếu có cơ chế quản lý ngoài FXChainWindow)
+            if (plugin->hasEditor())
+            {
+                if (auto* editor = plugin->getActiveEditor())
+                {
+                    DBG("Closing plugin editor before removal: " << plugin->getName());
+                    editor->setVisible(false);
+                }
+            }
+        }
+        catch (...)
+        {
+            DBG("Exception during plugin suspend or editor close before removal.");
+        }
     }
+
+    pluginBypassState.erase(index);
+    pluginChain.remove(index);
+
+    AppState::getInstance().setPresetDirty(true);
+    sendChangeMessage();
 }
 
 void ProcessorBase::movePlugin(int oldIndex, int newIndex)
@@ -349,8 +425,6 @@ void ProcessorBase::movePlugin(int oldIndex, int newIndex)
         if (oldIndexBypassed) pluginBypassState.insert(newIndex);
         if (newIndexBypassed) pluginBypassState.insert(oldIndex);
         pluginChain.move(oldIndex, newIndex);
-
-        // <<< FIX >>>
         AppState::getInstance().setPresetDirty(true);
         sendChangeMessage();
     }
@@ -369,7 +443,6 @@ void ProcessorBase::setPluginBypassed(int pluginIndex, bool shouldBeBypassed)
                 boolParam->setValueNotifyingHost(shouldBeBypassed ? 1.0f : 0.0f);
                 boolParam->endChangeGesture();
                 pluginBypassState.erase(pluginIndex);
-                // The dirty flag will be set by the audioProcessorParameterChanged callback
                 return;
             }
         }
@@ -417,3 +490,9 @@ void ProcessorBase::setLevelSource(std::atomic<float>* newLevelSource)
 {
     levelSource.store(newLevelSource);
 }
+
+// <<< ADDED: Implementation for Send/Return level controls >>>
+void ProcessorBase::setSendLevel(float newLevel0To1) { sendLevel.store(newLevel0To1); }
+float ProcessorBase::getSendLevel() const { return sendLevel.load(); }
+void ProcessorBase::setReturnLevel(float newLevel0To1) { returnLevel.store(newLevel0To1); }
+float ProcessorBase::getReturnLevel() const { return returnLevel.load(); }

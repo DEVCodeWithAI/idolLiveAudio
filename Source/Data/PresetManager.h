@@ -5,13 +5,23 @@
 // Forward declaration
 class AudioEngine;
 
-// <<< FIX >>> Define the identifiers in the header file to be included elsewhere.
+// <<< FIXED: Identifiers are now correctly defined back in this central header >>>
 namespace Identifiers
 {
     const juce::Identifier Preset("Preset");
     const juce::Identifier VocalProcessorState("VocalProcessorState");
     const juce::Identifier MusicProcessorState("MusicProcessorState");
     const juce::Identifier MasterProcessorState("MasterProcessorState");
+
+    const juce::Identifier VocalFx1State("VocalFx1State");
+    const juce::Identifier VocalFx2State("VocalFx2State");
+    const juce::Identifier VocalFx3State("VocalFx3State");
+    const juce::Identifier VocalFx4State("VocalFx4State");
+
+    const juce::Identifier MusicFx1State("MusicFx1State");
+    const juce::Identifier MusicFx2State("MusicFx2State");
+    const juce::Identifier MusicFx3State("MusicFx3State");
+    const juce::Identifier MusicFx4State("MusicFx4State");
 }
 
 class PresetManager : public juce::ChangeBroadcaster

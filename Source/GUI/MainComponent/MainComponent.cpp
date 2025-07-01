@@ -1,4 +1,4 @@
-﻿/*
+/*
   ==============================================================================
 
     MainComponent.cpp
@@ -79,7 +79,8 @@ MainComponent::MainComponent()
                 changeListenerCallback(deviceManager.get());
         });
 
-    setSize(1440, 810);
+    // <<< MODIFIED: Increased component size >>>
+    setSize(1640, 1010);
 }
 
 MainComponent::~MainComponent()

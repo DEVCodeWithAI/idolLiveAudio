@@ -12,7 +12,7 @@ public:
     void scanAndMergeAll();
 
     juce::Array<juce::PluginDescription> getFilteredPlugins(const juce::String& searchText) const;
-
+    void replaceAllPlugins(const juce::KnownPluginList& newList);
     void addPluginFromUserChoice();
     void removePluginFromListByIndex(int index);
     juce::Array<juce::PluginDescription> getKnownPlugins() const;

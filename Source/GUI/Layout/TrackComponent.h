@@ -1,9 +1,10 @@
-﻿#pragma once
+#pragma once
 
 #include "JuceHeader.h"
 #include "../../Data/LanguageManager/LanguageManager.h"
 #include "../../Components/LevelMeter.h"
 #include "../../AudioEngine/ProcessorBase.h"
+#include "../Windows/FXChainWindow.h"
 
 class AudioEngine;
 
@@ -56,6 +57,8 @@ private:
     void addListenerToAllPlugins();
     void removeListenerFromAllPlugins();
 
+    void openFxWindow(int index);
+
     ProcessorBase* processor = nullptr;
     AudioEngine* audioEngine = nullptr;
     ChannelType channelType;
@@ -72,6 +75,13 @@ private:
     juce::TextButton muteButton;
     juce::Slider volumeSlider;
     LevelMeter levelMeter;
+
+    juce::Label fxSectionLabel;
+    std::array<juce::TextButton, 4> fxButtons;
+    std::array<juce::TextButton, 4> fxMuteButtons;
+    std::array<juce::Component::SafePointer<FXChainWindow>, 4> fxWindows;
+
+
     juce::Label pluginListLabel;
     juce::ListBox pluginListBox;
     juce::ComboBox addPluginSelector;

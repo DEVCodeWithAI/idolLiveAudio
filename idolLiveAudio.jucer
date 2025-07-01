@@ -8,8 +8,8 @@
   <MAINGROUP id="B708Sa" name="idolLiveAudio">
     <GROUP id="{AD963046-D105-7E97-82F8-04E24F432A02}" name="Resources">
       <GROUP id="{08105253-0E21-EFD1-B951-19A48B0626BC}" name="Languages">
-        <FILE id="LtEDrR" name="lang_en.json" compile="0" resource="1" file="Resources/Languages/lang_en.json"/>
-        <FILE id="c64AQ4" name="lang_vi.json" compile="0" resource="1" file="Resources/Languages/lang_vi.json"/>
+        <FILE id="H93WUb" name="lang_en.json" compile="0" resource="1" file="Resources/Languages/lang_en.json"/>
+        <FILE id="BdZ9S8" name="lang_vi.json" compile="0" resource="1" file="Resources/Languages/lang_vi.json"/>
       </GROUP>
       <FILE id="etZReR" name="icon_128x128.png" compile="0" resource="1"
             file="Resources/icon_128x128.png"/>
@@ -19,13 +19,7 @@
             file="Resources/SplashScreen.png"/>
     </GROUP>
     <GROUP id="{861A1729-C73D-B95D-2F91-A03A42B14763}" name="Source">
-      <GROUP id="{01ED8153-D88C-BD90-665A-E82D24929235}" name="System">
-        <GROUP id="{D4D60E53-F5C5-044E-1194-02514DFAAED7}" name="CrashHandler">
-          <FILE id="orTVuE" name="CrashHandler.cpp" compile="1" resource="0"
-                file="Source/System/CrashHandler/CrashHandler.cpp"/>
-          <FILE id="HOu2W6" name="CrashHandler.h" compile="0" resource="0" file="Source/System/CrashHandler/CrashHandler.h"/>
-        </GROUP>
-      </GROUP>
+      <GROUP id="{01ED8153-D88C-BD90-665A-E82D24929235}" name="System"/>
       <GROUP id="{E77A2C06-28F7-1C6E-9A8C-C921C2E790FF}" name="Components">
         <FILE id="fflyPd" name="CustomLookAndFeel.cpp" compile="1" resource="0"
               file="Source/Components/CustomLookAndFeel.cpp"/>
@@ -41,6 +35,9 @@
       </GROUP>
       <GROUP id="{3E3506BA-0FCC-E4C9-5279-D85552AFD218}" name="GUI">
         <GROUP id="{245BE511-90B6-7324-D1FE-457CB6D50C58}" name="Windows">
+          <FILE id="V4uNgk" name="FXChainWindow.cpp" compile="1" resource="0"
+                file="Source/GUI/Windows/FXChainWindow.cpp"/>
+          <FILE id="wO1HgB" name="FXChainWindow.h" compile="0" resource="0" file="Source/GUI/Windows/FXChainWindow.h"/>
           <FILE id="dHhupi" name="MasterPluginsWindow.cpp" compile="1" resource="0"
                 file="Source/GUI/Windows/MasterPluginsWindow.cpp"/>
           <FILE id="IpEKcP" name="MasterPluginsWindow.h" compile="0" resource="0"
@@ -177,7 +174,7 @@
     <VS2022 targetFolder="Builds/VisualStudio2022" smallIcon="etZReR" bigIcon="p0jcjU">
       <CONFIGURATIONS>
         <CONFIGURATION isDebug="1" name="Debug" targetName="idolLiveAudio" headerPath="E:/Project idol LIVE Audio/idolLiveAudio/Source&#10;C:/ASIO_SDK/common"/>
-        <CONFIGURATION isDebug="0" name="Release" targetName="idolLiveAudio" headerPath="$(projectDir)/Source&#10;C:/ASIO_SDK/common"/>
+        <CONFIGURATION isDebug="0" name="Release" targetName="idolLiveAudio" headerPath="E:/Project idol LIVE Audio/idolLiveAudio/Source&#10;C:/ASIO_SDK/common"/>
       </CONFIGURATIONS>
       <MODULEPATHS>
         <MODULEPATH id="juce_audio_basics" path="C:/JUCE/modules"/>

@@ -31,7 +31,8 @@
         "activePlugins": "Plugin đang hoạt động",
         "addPluginPlaceholder": "Thêm Plugin...",
         "add": "Thêm",
-        "pleaseSelectDevice": "Vui lòng chọn thiết bị âm thanh"
+        "pleaseSelectDevice": "Vui lòng chọn thiết bị âm thanh",
+        "fxSends": "GỬI HIỆU ỨNG"
     },
     "pinnedPlugin": {
         "title": "PLUGIN ĐÃ GHIM",
@@ -127,5 +128,11 @@
         "title": "Lỗi Ứng Dụng",
         "message": "idolLiveAudio đã gặp một lỗi nghiêm trọng và cần phải đóng. Vui lòng sao chép báo cáo dưới đây và gửi đi để được hỗ trợ.",
         "copyButton": "Sao chép Báo cáo"
+    },
+    "scanProcess": {
+        "title": "Đang quét",
+        "message": "Đang quét plugin, vui lòng đợi...",
+        "completeTitle": "Quét hoàn tất",
+        "completeMessage": "Quá trình quét plugin đã kết thúc."
     }
 }

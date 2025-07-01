@@ -1,12 +1,11 @@
-﻿#include "Application.h"
+#include "Application.h"
 #include "../GUI/MainComponent/MainComponent.h"
 #include "../GUI/Windows/PresetManagerWindow.h"
 #include "../GUI/Windows/PluginManagerWindow.h"
 #include "../GUI/Windows/SplashScreenComponent.h"
 #include "../Data/AppState.h"
 #include "../Data/LanguageManager/LanguageManager.h"
-// <<< NEW: Include the CrashHandler >>>
-#include "../System/CrashHandler/CrashHandler.h"
+// Dòng #include "CrashHandler.h" đã được xóa
 
 
 PluginManager& getSharedPluginManager()
@@ -42,10 +41,10 @@ idolLiveAudioApplication::MainWindow::MainWindow(juce::String name)
     setFullScreen(true);
 #else
     setResizable(true, true);
-    setResizeLimits(1024, 768, 10000, 10000);
-    centreWithSize(1440, 810);
+    setResizeLimits(1640, 1010, 10000, 10000);
+    centreWithSize(1640, 1010);
 #endif
-    setVisible(false); // Ban đầu ẩn, chỉ show khi splash tắt
+    setVisible(false);
 }
 
 void idolLiveAudioApplication::MainWindow::closeButtonPressed()
@@ -63,8 +62,7 @@ void idolLiveAudioApplication::MainWindow::closeButtonPressed()
     }
 }
 
-// --- SplashWindow logic, Timer-based (fix race/destroy issues) ---
-
+// ... (Class SplashWindow không thay đổi) ...
 class SplashWindow final : public juce::DocumentWindow
 {
 public:
@@ -101,12 +99,12 @@ public:
     void closeButtonPressed() override {}
 };
 
+
 //==============================================================================
 
 void idolLiveAudioApplication::initialise(const juce::String& commandLine)
 {
-    // <<< NEW: Install the crash handler as the very first thing >>>
-    CrashHandler::install();
+    // Lời gọi CrashHandler::install(); đã được xóa
 
     juce::ignoreUnused(commandLine);
 
@@ -169,9 +167,15 @@ void idolLiveAudioApplication::shutdown()
         if (auto* mainComp = dynamic_cast<MainComponent*>(mainWindow->getContentComponent()))
             AppState::getInstance().saveState(*mainComp);
     }
+
+    if (auto* mainComp = dynamic_cast<MainComponent*>(mainWindow->getContentComponent()))
+    {
+        mainComp->getAudioDeviceManager().closeAudioDevice();
+    }
+
     mainWindow = nullptr;
     presetManagerWindow = nullptr;
-    pluginManagerWindow = nullptr; // Đảm bảo có dòng này
+    pluginManagerWindow = nullptr;
     presetManager = nullptr;
     pluginManager = nullptr;
     splashWindow = nullptr;

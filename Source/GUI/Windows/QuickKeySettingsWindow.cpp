@@ -1,4 +1,4 @@
-/*
+﻿/*
   ==============================================================================
 
     QuickKeySettingsWindow.cpp
@@ -421,5 +421,6 @@ QuickKeySettingsWindow::~QuickKeySettingsWindow() {}
 
 void QuickKeySettingsWindow::closeButtonPressed()
 {
-    delete this;
+    // Áp dụng giải pháp tương tự ở đây
+    juce::MessageManager::callAsync([this] { delete this; });
 }

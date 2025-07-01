@@ -1,8 +1,8 @@
-﻿/*
+/*
   ==============================================================================
 
     AudioEngine.cpp
-    (Final fix using std::function callback)
+    (Fully Functional Send/Return FX Architecture)
 
   ==============================================================================
 */
@@ -14,7 +14,9 @@
 #include "SoundPlayer.h"
 
 AudioEngine::AudioEngine(juce::AudioDeviceManager& manager)
-    : deviceManager(manager)
+    : deviceManager(manager),
+      vocalFxChain(Identifiers::VocalFx1State, Identifiers::VocalFx2State, Identifiers::VocalFx3State, Identifiers::VocalFx4State),
+      musicFxChain(Identifiers::MusicFx1State, Identifiers::MusicFx2State, Identifiers::MusicFx3State, Identifiers::MusicFx4State)
 {
     soundPlayer = std::make_unique<IdolAZ::SoundPlayer>();
 }
@@ -36,6 +38,9 @@ void AudioEngine::audioDeviceAboutToStart(juce::AudioIODevice* device)
     vocalProcessor.prepare(stereoSpec);
     musicProcessor.prepare(stereoSpec);
     masterProcessor.prepare(stereoSpec);
+    
+    for (auto& fxProc : vocalFxChain.processors) fxProc.prepare(stereoSpec);
+    for (auto& fxProc : musicFxChain.processors) fxProc.prepare(stereoSpec);
 
     soundPlayer->prepareToPlay(currentBlockSize, currentSampleRate);
 
@@ -43,16 +48,20 @@ void AudioEngine::audioDeviceAboutToStart(juce::AudioIODevice* device)
     musicStereoBuffer.setSize(2, currentBlockSize);
     mixBuffer.setSize(2, currentBlockSize);
     soundboardBuffer.setSize(2, currentBlockSize);
+    
+    fxSendBuffer.setSize(2, currentBlockSize);
+    for (auto& buffer : vocalFxReturnBuffers) buffer.setSize(2, currentBlockSize);
+    for (auto& buffer : musicFxReturnBuffers) buffer.setSize(2, currentBlockSize);
 
     vocalProcessor.reset();
     musicProcessor.reset();
     masterProcessor.reset();
 
-    // --- NEW LOGIC: Trigger the callback ---
+    for (auto& fxProc : vocalFxChain.processors) fxProc.reset();
+    for (auto& fxProc : musicFxChain.processors) fxProc.reset();
+
     if (onDeviceStarted)
     {
-        // Use callAsync to run the callback on the main message thread,
-        // which is safe for UI operations and completing the session restore.
         juce::MessageManager::callAsync(onDeviceStarted);
     }
 }
@@ -63,6 +72,10 @@ void AudioEngine::audioDeviceStopped()
     vocalProcessor.reset();
     musicProcessor.reset();
     masterProcessor.reset();
+    
+    for (auto& fxProc : vocalFxChain.processors) fxProc.reset();
+    for (auto& fxProc : musicFxChain.processors) fxProc.reset();
+
     soundPlayer->releaseResources();
 
     currentSampleRate = 0.0;
@@ -79,6 +92,8 @@ void AudioEngine::audioDeviceStopped()
         musicTrackComponent->populateInputChannels({}, {});
 }
 
+
+// <<< MODIFIED: Full audio callback logic with send/return levels >>>
 void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChannelData, int numInputChannels,
     float* const* outputChannelData, int numOutputChannels,
     int numSamples, const juce::AudioIODeviceCallbackContext& context)
@@ -86,22 +101,24 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChan
     juce::ignoreUnused(context);
     juce::ScopedNoDenormals noDenormals;
 
+    vocalBuffer.clear();
+    musicStereoBuffer.clear();
+    mixBuffer.clear();
+    soundboardBuffer.clear();
+    for (auto& buffer : vocalFxReturnBuffers) buffer.clear();
+    for (auto& buffer : musicFxReturnBuffers) buffer.clear();
+
     const int currentVocalIn = vocalInputChannel.load();
     const int currentMusicLeftIn = musicInputLeftChannel.load();
     const int currentMusicRightIn = musicInputRightChannel.load();
     const int currentOutputLeft = selectedOutputLeftChannel.load();
     const int currentOutputRight = selectedOutputRightChannel.load();
 
-    vocalBuffer.clear();
-    musicStereoBuffer.clear();
-    mixBuffer.clear();
-    soundboardBuffer.clear();
-
+    // --- Process main "dry" signal paths ---
     if (juce::isPositiveAndBelow(currentVocalIn, numInputChannels))
     {
-        const float* monoInputSignal = inputChannelData[currentVocalIn];
-        vocalBuffer.copyFrom(0, 0, monoInputSignal, numSamples);
-        vocalBuffer.copyFrom(1, 0, monoInputSignal, numSamples);
+        vocalBuffer.copyFrom(0, 0, inputChannelData[currentVocalIn], numSamples);
+        vocalBuffer.copyFrom(1, 0, inputChannelData[currentVocalIn], numSamples);
         vocalProcessor.process(vocalBuffer);
     }
 
@@ -116,15 +133,55 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChan
     juce::AudioSourceChannelInfo soundboardChannelInfo(&soundboardBuffer, 0, numSamples);
     soundPlayer->getNextAudioBlock(soundboardChannelInfo);
 
+    // --- Process FX Send/Return paths ---
+    // Vocal FX
+    for (int i = 0; i < 4; ++i)
+    {
+        fxSendBuffer.copyFrom(0, 0, vocalBuffer, 0, 0, numSamples);
+        fxSendBuffer.copyFrom(1, 0, vocalBuffer, 1, 0, numSamples);
+        fxSendBuffer.applyGain(vocalFxChain.processors[i].getSendLevel());
+        
+        vocalFxChain.processors[i].process(fxSendBuffer);
+        
+        vocalFxReturnBuffers[i].copyFrom(0, 0, fxSendBuffer, 0, 0, numSamples);
+        vocalFxReturnBuffers[i].copyFrom(1, 0, fxSendBuffer, 1, 0, numSamples);
+        vocalFxReturnBuffers[i].applyGain(vocalFxChain.processors[i].getReturnLevel());
+    }
+
+    // Music FX
+    for (int i = 0; i < 4; ++i)
+    {
+        fxSendBuffer.copyFrom(0, 0, musicStereoBuffer, 0, 0, numSamples);
+        fxSendBuffer.copyFrom(1, 0, musicStereoBuffer, 1, 0, numSamples);
+        fxSendBuffer.applyGain(musicFxChain.processors[i].getSendLevel());
+        
+        musicFxChain.processors[i].process(fxSendBuffer);
+
+        musicFxReturnBuffers[i].copyFrom(0, 0, fxSendBuffer, 0, 0, numSamples);
+        musicFxReturnBuffers[i].copyFrom(1, 0, fxSendBuffer, 1, 0, numSamples);
+        musicFxReturnBuffers[i].applyGain(musicFxChain.processors[i].getReturnLevel());
+    }
+    
+    // --- Sum all signals into the main mix buffer ---
     mixBuffer.addFrom(0, 0, vocalBuffer, 0, 0, numSamples);
     mixBuffer.addFrom(1, 0, vocalBuffer, 1, 0, numSamples);
     mixBuffer.addFrom(0, 0, musicStereoBuffer, 0, 0, numSamples);
     mixBuffer.addFrom(1, 0, musicStereoBuffer, 1, 0, numSamples);
     mixBuffer.addFrom(0, 0, soundboardBuffer, 0, 0, numSamples);
     mixBuffer.addFrom(1, 0, soundboardBuffer, 1, 0, numSamples);
+    
+    for (int i = 0; i < 4; ++i)
+    {
+        mixBuffer.addFrom(0, 0, vocalFxReturnBuffers[i], 0, 0, numSamples);
+        mixBuffer.addFrom(1, 0, vocalFxReturnBuffers[i], 1, 0, numSamples);
+        mixBuffer.addFrom(0, 0, musicFxReturnBuffers[i], 0, 0, numSamples);
+        mixBuffer.addFrom(1, 0, musicFxReturnBuffers[i], 1, 0, numSamples);
+    }
 
+    // --- Process the final Master Processor Chain ---
     masterProcessor.process(mixBuffer);
 
+    // --- Final Output ---
     for (int i = 0; i < numOutputChannels; ++i)
         juce::FloatVectorOperations::clear(outputChannelData[i], numSamples);
 
@@ -133,6 +190,21 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChan
 
     if (currentOutputRight != -1 && juce::isPositiveAndBelow(currentOutputRight, numOutputChannels))
         juce::FloatVectorOperations::copy(outputChannelData[currentOutputRight], mixBuffer.getReadPointer(1), numSamples);
+}
+
+
+TrackProcessor* AudioEngine::getFxProcessorForVocal(int index)
+{
+    if (juce::isPositiveAndBelow(index, 4))
+        return &vocalFxChain.processors[index];
+    return nullptr;
+}
+
+TrackProcessor* AudioEngine::getFxProcessorForMusic(int index)
+{
+    if (juce::isPositiveAndBelow(index, 4))
+        return &musicFxChain.processors[index];
+    return nullptr;
 }
 
 void AudioEngine::setVocalInputChannel(int channelIndex)

@@ -50,7 +50,7 @@ class MasterPluginsEditorComponent : public juce::Component,
     public juce::ChangeListener,
     public juce::ListBoxModel,
     public juce::AudioProcessorListener,
-    public juce::ComboBox::Listener // <<< MODIFIED
+    public juce::ComboBox::Listener
 {
 public:
     MasterPluginsEditorComponent(MasterProcessor& proc);
@@ -59,7 +59,7 @@ public:
     void paint(juce::Graphics& g) override;
     void resized() override;
 
-    void comboBoxChanged(juce::ComboBox* comboBoxThatHasChanged) override; // <<< NEW
+    void comboBoxChanged(juce::ComboBox* comboBoxThatHasChanged) override;
 
     class PluginItemComponent;
 
@@ -75,7 +75,7 @@ private:
     void showPluginEditor(int row);
     void togglePluginBypass(int row);
     void updateTexts();
-    void updatePluginSelector(const juce::String& searchText = {}); // <<< MODIFIED
+    void updatePluginSelector(const juce::String& searchText = {});
     void addListenerToAllPlugins();
     void removeListenerFromAllPlugins();
 
@@ -86,7 +86,7 @@ private:
     juce::ComboBox addPluginSelector;
     juce::TextButton addButton;
 
-    bool isUpdatingFromTextChange = false; // <<< NEW
+    bool isUpdatingFromTextChange = false;
 };
 
 // ... (PluginItemComponent class remains unchanged) ...
@@ -236,7 +236,6 @@ void MasterPluginsEditorComponent::resized()
     addPluginSelector.setBounds(addArea);
 }
 
-// <<< NEW: Implement the listener callback >>>
 void MasterPluginsEditorComponent::comboBoxChanged(juce::ComboBox* comboBoxThatHasChanged)
 {
     if (isUpdatingFromTextChange)
@@ -277,7 +276,6 @@ juce::Component* MasterPluginsEditorComponent::refreshComponentForRow(int rowNum
     return item;
 }
 
-// <<< MODIFIED: Add plugin using stable uniqueId >>>
 void MasterPluginsEditorComponent::addSelectedPlugin()
 {
     const int selectedUniqueId = addPluginSelector.getSelectedId();
@@ -344,7 +342,6 @@ void MasterPluginsEditorComponent::updateTexts()
     addPluginSelector.setTextWhenNothingSelected(lang.get("tracks.addPluginPlaceholder"));
 }
 
-// <<< MODIFIED: Handle filtering >>>
 void MasterPluginsEditorComponent::updatePluginSelector(const juce::String& searchText)
 {
     isUpdatingFromTextChange = true;

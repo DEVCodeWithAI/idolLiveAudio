@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "JuceHeader.h"
 #include "Data/PluginManager/PluginManager.h"
@@ -6,7 +6,7 @@
 
 // Forward declarations
 class PresetManagerWindow;
-class PluginManagerWindow; // Đảm bảo có dòng này
+class PluginManagerWindow;
 class MainComponent;
 class SplashWindow;
 
@@ -33,7 +33,7 @@ public:
     PresetManager* getPresetManager() { return presetManager.get(); }
 
     void showPresetManagerWindow();
-    void showPluginManagerWindow(); // Đảm bảo có dòng này
+    void showPluginManagerWindow();
 
 private:
     class MainWindow : public juce::DocumentWindow
@@ -46,11 +46,11 @@ private:
         JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainWindow)
     };
 
-    std::unique_ptr<SplashWindow> splashWindow;
-    std::unique_ptr<MainWindow> mainWindow;
     std::unique_ptr<PluginManager> pluginManager;
     std::unique_ptr<PresetManager> presetManager;
 
+    std::unique_ptr<SplashWindow> splashWindow;
+    std::unique_ptr<MainWindow> mainWindow;
     std::unique_ptr<PresetManagerWindow> presetManagerWindow;
-    std::unique_ptr<PluginManagerWindow> pluginManagerWindow; // Đảm bảo có dòng này
+    std::unique_ptr<PluginManagerWindow> pluginManagerWindow;
 };

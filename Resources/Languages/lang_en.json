@@ -31,7 +31,8 @@
         "activePlugins": "Active Plugins",
         "addPluginPlaceholder": "Add Plugin...",
         "add": "Add",
-        "pleaseSelectDevice": "Please select an audio device"
+        "pleaseSelectDevice": "Please select an audio device",
+        "fxSends": "FX SENDS"
     },
     "pinnedPlugin": {
         "title": "PINNED PLUGIN",
@@ -127,5 +128,12 @@
         "title": "Application Error",
         "message": "idolLiveAudio has encountered a critical error and needs to close. Please copy the report below and submit it for support.",
         "copyButton": "Copy Report"
+    },
+    "scanProcess": {
+        "title": "Scanning",
+        "message": "Scanning for plugins, please wait...",
+        "completeTitle": "Scan Complete",
+        "completeMessage": "Plugin scanning has finished."
     }
+
 }

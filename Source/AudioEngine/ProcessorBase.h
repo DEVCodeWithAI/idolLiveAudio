@@ -1,12 +1,3 @@
-/*
-  ==============================================================================
-
-    ProcessorBase.h
-    (Final Cleaned Version)
-
-  ==============================================================================
-*/
-
 #pragma once
 
 #include <JuceHeader.h>
@@ -17,7 +8,7 @@ class ProcessorBase : public juce::ChangeBroadcaster
 {
 public:
     ProcessorBase(const juce::Identifier& id);
-    ~ProcessorBase() override = default;
+    ~ProcessorBase() override;
 
     void prepare(const juce::dsp::ProcessSpec& spec);
     void process(juce::AudioBuffer<float>& buffer);
@@ -36,6 +27,11 @@ public:
     void setMuted(bool shouldBeMuted);
     bool isMuted() const;
 
+    void setSendLevel(float newLevel0To1);
+    float getSendLevel() const;
+    void setReturnLevel(float newLevel0To1);
+    float getReturnLevel() const;
+
     void setLevelSource(std::atomic<float>* newLevelSource);
 
     const juce::dsp::ProcessSpec& getProcessSpec() const { return processSpec; }
@@ -53,10 +49,11 @@ private:
     std::atomic<bool> muted = false;
 
     std::atomic<std::atomic<float>*> levelSource{ nullptr };
-
     std::unordered_set<int> pluginBypassState;
-
     juce::AudioBuffer<float> tempBuffer;
+
+    std::atomic<float> sendLevel{ 1.0f };
+    std::atomic<float> returnLevel{ 1.0f };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ProcessorBase)
 };

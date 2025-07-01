@@ -22,5 +22,5 @@ private:
     // Ngăn chặn việc sao chép
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LanguageManager)
 
-    juce::var languageData; // Biến var để lưu trữ toàn bộ dữ liệu JSON
+        juce::var languageData; // Biến var để lưu trữ toàn bộ dữ liệu JSON
 };

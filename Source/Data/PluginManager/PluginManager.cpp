@@ -1,11 +1,4 @@
-/*
-  ==============================================================================
-
-    PluginManager.cpp
-    (Fixed build errors)
-
-  ==============================================================================
-*/
+// Source/Data/PluginManager/PluginManager.cpp
 
 #include "Data/PluginManager/PluginManager.h"
 #include "Data/PluginManager/WavesShellManager.h"
@@ -27,38 +20,55 @@ PluginManager::~PluginManager()
     DBG("PluginManager destroyed cleanly.");
 }
 
-
 void PluginManager::scanAndMergeAll()
 {
     knownPluginList.clear();
-
-    DBG("Starting standard VST3 plugin scan...");
     juce::VST3PluginFormat vst3Format;
-    juce::PluginDirectoryScanner scanner(knownPluginList,
-        vst3Format,
-        vst3Format.getDefaultLocationsToSearch(),
-        true,
-        juce::File{},
-        true);
 
-    juce::String fileOrIdentifierScanned;
-    while (scanner.scanNextFile(true, fileOrIdentifierScanned));
+    // --- NEW, ROBUST SCANNING LOGIC ---
 
-    auto pluginTypes = knownPluginList.getTypes();
-    for (const auto& desc : pluginTypes)
+    // 1. Manually find all VST3 plugin files from default locations.
+    juce::Array<juce::File> allPluginFiles;
+
+    // <<< FIX IS HERE: Correctly iterate over juce::FileSearchPath >>>
+    auto searchPaths = vst3Format.getDefaultLocationsToSearch();
+    for (int i = 0; i < searchPaths.getNumPaths(); ++i)
     {
-        if (desc.fileOrIdentifier.containsIgnoreCase("WaveShell"))
+        const juce::File path = searchPaths[i];
+        path.findChildFiles(allPluginFiles, juce::File::findFiles, true, "*.vst3");
+    }
+
+    // 2. Scan non-Waves plugins first, skipping any WaveShell files.
+    DBG("Starting standard VST3 plugin scan (excluding WaveShells)...");
+    for (const auto& pluginFile : allPluginFiles)
+    {
+        if (pluginFile.getFileName().containsIgnoreCase("WaveShell"))
         {
-            knownPluginList.removeType(desc);
+            DBG("Skipping WaveShell file, will be handled by WavesShellManager: " + pluginFile.getFileName());
+            continue;
+        }
+
+        // Add a try-catch block for safety against other misbehaving plugins.
+        try
+        {
+            juce::OwnedArray<juce::PluginDescription> descs;
+            vst3Format.findAllTypesForFile(descs, pluginFile.getFullPathName());
+            for (auto* desc : descs)
+                if (desc != nullptr)
+                    knownPluginList.addType(*desc);
+        }
+        catch (...)
+        {
+            DBG("An exception was caught while scanning a non-Waves plugin: " + pluginFile.getFileName() + ". Skipping this file.");
         }
     }
     DBG("Standard scan complete. Found " + juce::String(knownPluginList.getNumTypes()) + " standard plugins.");
 
+    // 3. Now, handle Waves plugins using the dedicated, safe manager.
     DBG("Starting isolated WavesShell scan...");
     WavesShellManager::getInstance().scanAndParseShells();
     const auto& wavesPlugins = WavesShellManager::getInstance().getScannedPlugins();
     DBG("Found " + juce::String(wavesPlugins.size()) + " Waves plugins.");
-
     for (const auto& wavesDesc : wavesPlugins)
     {
         knownPluginList.addType(wavesDesc);
@@ -82,6 +92,7 @@ void PluginManager::addPluginFromUserChoice()
 
             if (pluginFile.getFileName().containsIgnoreCase("WaveShell"))
             {
+                // If user selects a waveshell, trigger a full rescan to handle it correctly
                 scanAndMergeAll();
                 return;
             }
@@ -185,4 +196,16 @@ void PluginManager::loadKnownPluginsList()
     if (knownPluginsFile.existsAsFile())
         if (auto xml = juce::parseXML(knownPluginsFile))
             knownPluginList.recreateFromXml(*xml);
+}
+
+void PluginManager::replaceAllPlugins(const juce::KnownPluginList& newList)
+{
+    knownPluginList.clear();
+    for (const auto& desc : newList.getTypes())
+    {
+        knownPluginList.addType(desc);
+    }
+    saveKnownPluginsList();
+    sendChangeMessage();
+    DBG("Plugin list updated from non-blocking scan.");
 }

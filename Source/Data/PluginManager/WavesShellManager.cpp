@@ -1,7 +1,5 @@
 #include "WavesShellManager.h"
 
-// Không cần include <windows.h> nữa, JUCE sẽ lo việc đó.
-
 WavesShellManager& WavesShellManager::getInstance()
 {
     static WavesShellManager instance;
@@ -18,30 +16,26 @@ void WavesShellManager::scanAndParseShells()
 
     if (shellFiles.isEmpty())
     {
-        DBG("No WavesShell files found to scan.");
         return;
     }
-
-    DBG("Found " + juce::String(shellFiles.size()) + " WavesShell file(s). Starting isolated scan...");
 
     juce::VST3PluginFormat vst3Format;
 
     for (const auto& shellFile : shellFiles)
     {
-        DBG("Scanning: " + shellFile.getFullPathName());
         juce::OwnedArray<juce::PluginDescription> descsInFile;
 
         try
         {
             vst3Format.findAllTypesForFile(descsInFile, shellFile.getFullPathName());
         }
-        catch (const std::exception& e)
+        catch (const std::exception&)
         {
-            DBG("!!! C++ Exception while scanning: " + shellFile.getFullPathName() + " - " + juce::String(e.what()));
+            // Exception caught, but we will not log it in the release version.
         }
         catch (...)
         {
-            DBG("!!! Unknown C++ Exception while scanning: " + shellFile.getFullPathName());
+            // Unknown exception caught.
         }
 
         if (descsInFile.size() > 0)
@@ -51,7 +45,6 @@ void WavesShellManager::scanAndParseShells()
                 if (desc != nullptr)
                     knownWavesPlugins.add(*desc);
             }
-            DBG("Successfully parsed " + juce::String(descsInFile.size()) + " plugins from " + shellFile.getFileName());
         }
     }
 }
@@ -79,7 +72,7 @@ void WavesShellManager::findWavesShellFiles(juce::Array<juce::File>& filesFound)
             }
             else
             {
-                DBG("Ignoring potentially problematic Waves shell file: " + foundFile.getFullPathName());
+                // Ignoring potentially problematic Waves shell file.
             }
         }
     }
