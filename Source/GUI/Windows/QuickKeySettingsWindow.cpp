@@ -363,20 +363,42 @@ void QuickKeySettingsContentComponent::saveChanges()
 
     for (auto& slot : slotsToEdit)
     {
+        // Chỉ xử lý các slot có file được gán và file đó nằm ngoài thư mục profile
         if (slot.audioFile.existsAsFile() && !slot.audioFile.isAChildOf(profileDir))
         {
             juce::File newFile = profileDir.getChildFile(slot.audioFile.getFileName());
+
+            // FIX 1: Nếu file đích đã tồn tại, xóa nó đi để đảm bảo copy thành công
+            if (newFile.existsAsFile())
+            {
+                if (!newFile.deleteFile())
+                {
+                    // Nếu không thể xóa file cũ, báo lỗi và bỏ qua
+                    juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
+                        "File Error",
+                        "Could not replace existing file: " + newFile.getFileName());
+                    continue; // Bỏ qua slot này
+                }
+            }
+
+            // Thực hiện sao chép
             if (slot.audioFile.copyFileTo(newFile))
             {
+                // QUAN TRỌNG: Cập nhật lại đối tượng File để nó trỏ đến file vừa được copy
                 slot.audioFile = newFile;
             }
             else
             {
-                juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon, "File Copy Error", "Could not copy file: " + slot.audioFile.getFileName());
+                // FIX 2: Nếu copy thất bại, xóa đường dẫn trong slot để tránh lưu rác
+                slot.audioFile = juce::File{};
+                juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
+                    "File Copy Error",
+                    "Could not copy file: " + slot.audioFile.getFileName() + "\nThis sound will not be saved.");
             }
         }
     }
 
+    // Bây giờ mới tiến hành lưu profile với các đường dẫn đã được cập nhật
     getSharedSoundboardProfileManager().saveProfile(slotsToEdit);
 
     juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::InfoIcon,

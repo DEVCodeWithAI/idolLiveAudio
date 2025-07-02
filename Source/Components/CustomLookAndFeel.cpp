@@ -25,6 +25,16 @@ void CustomLookAndFeel::drawLinearSlider(juce::Graphics& g, int x, int y, int wi
 
         g.setColour(juce::Colour(0xff007acc));
         g.fillRoundedRectangle(valueBounds, 3.0f);
+
+        const float thumbRadius = 10.0f;
+        const float thumbX = sliderPos - thumbRadius * 0.5f;
+        const float thumbY = y + height * 0.5f - thumbRadius * 0.5f;
+
+        g.setColour(juce::Colours::white);
+        g.fillEllipse(thumbX, thumbY, thumbRadius, thumbRadius);
+
+        g.setColour(juce::Colours::black.withAlpha(0.4f));
+        g.drawEllipse(thumbX, thumbY, thumbRadius, thumbRadius, 1.0f);
     }
     else
     {

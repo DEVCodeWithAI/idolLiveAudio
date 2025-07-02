@@ -49,3 +49,16 @@ void StatusBarComponent::changeListenerCallback(juce::ChangeBroadcaster* source)
 {
     (void)source; // Báo cho compiler biết: có lý do để nó ở đây
 }
+
+void StatusBarComponent::updateStatus(double cpuUsage, double latencyMs, double sampleRate)
+{
+    // Định dạng chuỗi để hiển thị
+    juce::String cpuText = "CPU: " + juce::String(cpuUsage, 1) + " %";
+    juce::String latencyText = "Latency: " + juce::String(latencyMs, 2) + " ms";
+    juce::String rateText = "Rate: " + juce::String(sampleRate / 1000.0, 1) + " kHz";
+
+    // Cập nhật các label
+    cpuLabel.setText(cpuText, juce::dontSendNotification);
+    latencyLabel.setText(latencyText, juce::dontSendNotification);
+    sampleRateLabel.setText(rateText, juce::dontSendNotification);
+}

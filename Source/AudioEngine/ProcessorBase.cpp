@@ -93,7 +93,6 @@ void ProcessorBase::setState(const juce::ValueTree& newState)
         return;
     }
 
-    // Load send/return levels
     setSendLevel(newState.getProperty(IDs::sendLevel, 1.0f));
     setReturnLevel(newState.getProperty(IDs::returnLevel, 1.0f));
 
@@ -128,55 +127,16 @@ void ProcessorBase::setState(const juce::ValueTree& newState)
 
         if (auto instance = pluginManager.createPluginInstance(desc, processSpec))
         {
-            instance->suspendProcessing(true);
-
-            const auto pluginName = instance->getName().toLowerCase();
-            const bool isPickyPlugin = pluginName.contains("auto-tune") || pluginName.contains("antares");
-            bool layoutSet = false;
-
-            if (isPickyPlugin)
-            {
-                DBG("Picky plugin detected on preset load: " << instance->getName() << ". Skipping explicit layout negotiation.");
-                layoutSet = true;
-            }
-            else
-            {
-                if (instance->getBusCount(true) > 1)
-                    instance->getBus(true, 1)->enable(false);
-
-                const auto stereoToStereo = juce::AudioProcessor::BusesLayout{ { juce::AudioChannelSet::stereo() }, { juce::AudioChannelSet::stereo() } };
-                if (instance->checkBusesLayoutSupported(stereoToStereo))
-                {
-                    layoutSet = instance->setBusesLayout(stereoToStereo);
-                }
-
-                if (!layoutSet)
-                {
-                    const auto monoToStereo = juce::AudioProcessor::BusesLayout{ { juce::AudioChannelSet::mono() },   { juce::AudioChannelSet::stereo() } };
-                    if (instance->checkBusesLayoutSupported(monoToStereo))
-                    {
-                        layoutSet = instance->setBusesLayout(monoToStereo);
-                    }
-                }
-            }
-
-            if (!layoutSet)
-            {
-                DBG("ERROR: Plugin from preset failed layout negotiation: " << instance->getName());
-                continue;
-            }
-
+            // <<< FIX: REMOVED ALL I/O NEGOTIATION LOGIC >>>
+            // We just prepare the plugin and then set its internal state.
             instance->prepareToPlay(processSpec.sampleRate, (int)processSpec.maximumBlockSize);
-            instance->reset();
 
             try
             {
                 auto base64State = pluginState.getProperty(IDs::state).toString();
                 juce::MemoryBlock internalState;
                 if (internalState.fromBase64Encoding(base64State))
-                {
                     instance->setStateInformation(internalState.getData(), (int)internalState.getSize());
-                }
             }
             catch (...)
             {
@@ -189,11 +149,6 @@ void ProcessorBase::setState(const juce::ValueTree& newState)
                 pluginBypassState.insert(pluginChain.size());
 
             pluginChain.add(std::move(instance));
-
-            if (auto* addedInstance = pluginChain.getLast())
-            {
-                addedInstance->suspendProcessing(false);
-            }
         }
     }
 
@@ -311,46 +266,11 @@ void ProcessorBase::addPlugin(std::unique_ptr<juce::AudioPluginInstance> newPlug
 
     if (processSpec.sampleRate > 0)
     {
-        newPlugin->suspendProcessing(true);
-
-        const auto pluginName = newPlugin->getName().toLowerCase();
-        const bool isPickyPlugin = pluginName.contains("auto-tune") || pluginName.contains("antares");
-
-        bool layoutSet = false;
-
-        if (isPickyPlugin)
-        {
-            DBG("Picky plugin detected: " << newPlugin->getName() << ". Skipping layout negotiation.");
-            layoutSet = true;
-        }
-        else
-        {
-            if (newPlugin->getBusCount(true) > 1)
-                newPlugin->getBus(true, 1)->enable(false);
-
-            const auto stereoToStereo = juce::AudioProcessor::BusesLayout{ { juce::AudioChannelSet::stereo() }, { juce::AudioChannelSet::stereo() } };
-            const auto monoToStereo = juce::AudioProcessor::BusesLayout{ { juce::AudioChannelSet::mono() },   { juce::AudioChannelSet::stereo() } };
-
-            if (newPlugin->checkBusesLayoutSupported(stereoToStereo))
-                layoutSet = newPlugin->setBusesLayout(stereoToStereo);
-
-            if (!layoutSet && newPlugin->checkBusesLayoutSupported(monoToStereo))
-                layoutSet = newPlugin->setBusesLayout(monoToStereo);
-        }
-
-        if (!layoutSet)
-        {
-            juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
-                "Plugin Load Failed",
-                "The selected plugin has an I/O configuration that is not compatible with this application: " + newPlugin->getName());
-
-            newPlugin->suspendProcessing(false);
-            return;
-        }
-
+        // <<< FIX: REMOVED ALL I/O NEGOTIATION LOGIC >>>
+        // We simply prepare the plugin and trust it to use its default layout.
+        // The process() method is already robust enough to handle channel differences.
         newPlugin->prepareToPlay(processSpec.sampleRate, (int)processSpec.maximumBlockSize);
         newPlugin->reset();
-        newPlugin->suspendProcessing(false);
     }
 
     pluginChain.add(std::move(newPlugin));

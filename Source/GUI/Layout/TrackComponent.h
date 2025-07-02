@@ -41,6 +41,7 @@ public:
 
     juce::ValueTree getOpenWindowsState() const;
     void restoreOpenWindows(const juce::ValueTree& state);
+    void closeAllPluginWindows();
 
 private:
     class PluginItemComponent;

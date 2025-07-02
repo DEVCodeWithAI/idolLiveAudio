@@ -12,6 +12,7 @@ public:
     void changeListenerCallback(juce::ChangeBroadcaster* source) override;
 
     void setStatusMessage(const juce::String& message, bool isError);
+    void updateStatus(double cpuUsage, double latencyMs, double sampleRate);
 
 private:
     void updateTexts();

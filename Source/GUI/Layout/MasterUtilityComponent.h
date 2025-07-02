@@ -30,6 +30,7 @@ public:
 
     /** Restores the open plugin windows for the master track from a saved state. */
     void restoreOpenWindows(const juce::ValueTree& state);
+    void closeAllPluginWindows();
 
 
 private:

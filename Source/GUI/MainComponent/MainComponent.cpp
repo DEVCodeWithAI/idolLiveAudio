@@ -1,4 +1,4 @@
-/*
+﻿/*
   ==============================================================================
 
     MainComponent.cpp
@@ -81,6 +81,8 @@ MainComponent::MainComponent()
 
     // <<< MODIFIED: Increased component size >>>
     setSize(1640, 1010);
+
+    startTimerHz(2);
 }
 
 MainComponent::~MainComponent()
@@ -279,4 +281,28 @@ void MainComponent::resized()
     if (vocalTrack) vocalTrack->setBounds(tracksArea.removeFromLeft(tracksArea.getWidth() / 2));
     tracksArea.removeFromLeft(padding);
     if (musicTrack) musicTrack->setBounds(tracksArea);
+}
+
+void MainComponent::timerCallback()
+{
+    // Lấy thông tin từ deviceManager thay vì device
+    if (auto* device = deviceManager->getCurrentAudioDevice())
+    {
+        // <<< FIX: Gọi getCpuUsage() từ deviceManager >>>
+        auto cpuUsage = deviceManager->getCpuUsage() * 100.0;
+
+        // Phần còn lại của hàm không thay đổi và đã đúng
+        auto latencySamples = device->getInputLatencyInSamples() + device->getOutputLatencyInSamples();
+        auto latencyMs = (latencySamples / device->getCurrentSampleRate()) * 1000.0;
+
+        auto sampleRate = device->getCurrentSampleRate();
+
+        if (statusBar != nullptr)
+            statusBar->updateStatus(cpuUsage, latencyMs, sampleRate);
+    }
+    else
+    {
+        if (statusBar != nullptr)
+            statusBar->updateStatus(0.0, 0.0, 0.0);
+    }
 }

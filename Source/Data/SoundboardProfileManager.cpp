@@ -200,7 +200,15 @@ juce::var SoundboardProfileManager::soundboardSlotToVar(const SoundboardSlot& sl
     auto slotObject = new juce::DynamicObject();
     slotObject->setProperty("slotId", slot.slotId);
     slotObject->setProperty("displayName", slot.displayName);
-    slotObject->setProperty("audioFilePath", slot.audioFile.getFullPathName());
+
+    // <<< FIX: Save only the filename, not the full path >>>
+    // This makes the profile portable.
+    if (slot.audioFile.existsAsFile())
+        slotObject->setProperty("audioFileName", slot.audioFile.getFileName());
+    else
+        slotObject->setProperty("audioFileName", juce::String());
+
+
     slotObject->setProperty("hotkeyCode", slot.hotkey.getKeyCode());
     slotObject->setProperty("hotkeyModifiers", slot.hotkey.getModifiers().getRawFlags());
     return juce::var(slotObject);
@@ -213,7 +221,14 @@ SoundboardSlot SoundboardProfileManager::varToSoundboardSlot(const juce::var& sl
     {
         slot.slotId = obj->getProperty("slotId");
         slot.displayName = obj->getProperty("displayName");
-        slot.audioFile = juce::File(obj->getProperty("audioFilePath").toString());
+
+        // <<< FIX: Reconstruct the full path from the filename >>>
+        // This ensures the app looks for the audio file inside the current profile directory.
+        juce::String audioFileName = obj->getProperty("audioFileName").toString();
+        if (audioFileName.isNotEmpty())
+        {
+            slot.audioFile = getProfileDirectory().getChildFile(audioFileName);
+        }
 
         int keyCode = obj->getProperty("hotkeyCode");
         int modifiers = obj->getProperty("hotkeyModifiers");

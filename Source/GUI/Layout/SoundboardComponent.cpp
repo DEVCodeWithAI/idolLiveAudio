@@ -25,9 +25,14 @@ SoundboardComponent::SoundboardComponent(AudioEngine& engine)
     addAndMakeVisible(volumeLabel);
     addAndMakeVisible(volumeSlider);
     volumeSlider.setSliderStyle(juce::Slider::LinearHorizontal);
-    volumeSlider.setTextBoxStyle(juce::Slider::NoTextBox, true, 0, 0);
+    volumeSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 50, 20);
     volumeSlider.setRange(0.0, 1.0, 0.01);
     volumeSlider.setValue(0.75);
+
+    volumeSlider.setColour(juce::Slider::textBoxTextColourId, juce::Colours::white);
+    volumeSlider.setColour(juce::Slider::textBoxOutlineColourId, juce::Colours::black.withAlpha(0.5f));
+    volumeSlider.setColour(juce::Slider::textBoxBackgroundColourId, juce::Colour(0xff2d2d2d));
+
     volumeSlider.onValueChange = [this]
         {
             audioEngine.getSoundPlayer().setGain(static_cast<float>(volumeSlider.getValue()));

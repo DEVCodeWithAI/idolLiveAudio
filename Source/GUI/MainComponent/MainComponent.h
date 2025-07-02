@@ -16,7 +16,8 @@ class StatusBarComponent;
 
 class MainComponent : public juce::Component,
     public juce::ChangeListener,
-    public juce::ApplicationCommandTarget
+    public juce::ApplicationCommandTarget,
+    public juce::Timer
 {
 public:
     MainComponent();
@@ -32,6 +33,7 @@ public:
     void getAllCommands(juce::Array<juce::CommandID>& commands) override;
     void getCommandInfo(juce::CommandID commandID, juce::ApplicationCommandInfo& result) override;
     bool perform(const InvocationInfo& info) override;
+    void timerCallback() override;
 
     /**
      * @brief Checks for unsaved changes and prompts the user if necessary.

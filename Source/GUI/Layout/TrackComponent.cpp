@@ -239,10 +239,15 @@ TrackComponent::TrackComponent(const juce::String& trackNameKey, const juce::Col
     trackLabel.setColour(juce::Label::backgroundColourId, colour);
     trackLabel.setColour(juce::Label::textColourId, juce::Colours::white);
     pluginListLabel.setFont(IdolUIHelpers::createRegularFont(16.0f));
-    volumeSlider.setSliderStyle(juce::Slider::SliderStyle::LinearHorizontal);
-    volumeSlider.setTextBoxStyle(juce::Slider::NoTextBox, true, 0, 0);
+    volumeSlider.setSliderStyle(juce::Slider::LinearHorizontal);
+    volumeSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 50, 20);
     volumeSlider.setRange(-60.0, 6.0, 0.1);
     volumeSlider.setValue(0.0);
+
+    volumeSlider.setColour(juce::Slider::textBoxTextColourId, juce::Colours::white);
+    volumeSlider.setColour(juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
+    volumeSlider.setColour(juce::Slider::textBoxBackgroundColourId, juce::Colour(0xff2d2d2d));
+
     volumeSlider.onValueChange = [this]
         {
             if (processor != nullptr)
@@ -315,70 +320,91 @@ void TrackComponent::resized()
     const int padding = 10;
     bounds.reduce(padding, padding);
 
+    // Kích thước cố định từng vùng
     const int headerHeight = 40;
-    const int topControlsHeight = 120;
+
+    const int inputLineHeight = 30;
+    const int spacing = 5;
+    const int meterHeight = 20;
+
+    const int topControlsHeight = inputLineHeight + spacing + inputLineHeight + spacing + meterHeight;
+
     const int fxControlsHeight = 80;
 
+    // Cắt từng vùng rõ ràng
     auto headerArea = bounds.removeFromTop(headerHeight);
     bounds.removeFromTop(padding);
+
     auto topControlsArea = bounds.removeFromTop(topControlsHeight);
-    bounds.removeFromTop(5);
+    bounds.removeFromTop(padding);
+
     auto fxArea = bounds.removeFromTop(fxControlsHeight);
     bounds.removeFromTop(padding);
+
     auto pluginArea = bounds;
 
+    // Layout từng phần
     trackLabel.setBounds(headerArea);
 
+    // ===== Top Controls Layout =====
     {
         auto topBounds = topControlsArea.reduced(padding, 0);
 
-        auto inputLine1 = topBounds.removeFromTop(30);
+        auto inputLine1 = topBounds.removeFromTop(inputLineHeight);
         inputChannelLabel.setBounds(inputLine1.removeFromLeft(80));
         inputLine1.removeFromLeft(padding);
         inputChannelSelector.setBounds(inputLine1);
-        topBounds.removeFromTop(5);
 
-        auto inputLine2 = topBounds.removeFromTop(30);
+        topBounds.removeFromTop(spacing);
+
+        auto inputLine2 = topBounds.removeFromTop(inputLineHeight);
         lockButton.setBounds(inputLine2.removeFromLeft(30));
         inputLine2.removeFromLeft(padding);
         muteButton.setBounds(inputLine2.removeFromLeft(80));
         inputLine2.removeFromLeft(padding);
         volumeSlider.setBounds(inputLine2.reduced(0, 5));
-        topBounds.removeFromTop(5);
 
-        levelMeter.setBounds(topBounds.removeFromTop(20));
+        topBounds.removeFromTop(spacing);
+
+        levelMeter.setBounds(topBounds.removeFromTop(meterHeight));
     }
 
+    // ===== FX Area Layout =====
     {
         auto fxBounds = fxArea.reduced(padding, 0);
         fxSectionLabel.setBounds(fxBounds.removeFromTop(25));
 
-        const int buttonWidth = (fxBounds.getWidth() - (3 * 5)) / 4;
-        const int muteButtonHeight = 25;
-        const int fxButtonHeight = fxBounds.getHeight() - muteButtonHeight - 5;
+        const int fxSpacing = 5;
+        const int buttonWidth = (fxBounds.getWidth() - (3 * fxSpacing)) / 4;
+        const int totalHeight = fxBounds.getHeight();
+        const int fxButtonHeight = (totalHeight - fxSpacing) / 2;
+        const int muteButtonHeight = totalHeight - fxButtonHeight - fxSpacing;
 
         int currentX = fxBounds.getX();
 
         for (int i = 0; i < 4; ++i)
         {
             fxButtons[i].setBounds(currentX, fxBounds.getY(), buttonWidth, fxButtonHeight);
-            fxMuteButtons[i].setBounds(currentX, fxButtons[i].getBottom() + 5, buttonWidth, muteButtonHeight);
-            currentX += buttonWidth + 5;
+            fxMuteButtons[i].setBounds(currentX, fxBounds.getY() + fxButtonHeight + fxSpacing, buttonWidth, muteButtonHeight);
+            currentX += buttonWidth + fxSpacing;
         }
     }
 
+    // ===== Plugin Area Layout =====
     {
         auto pluginBounds = pluginArea.reduced(padding);
         pluginListLabel.setBounds(pluginBounds.removeFromTop(30));
+
         auto addPluginArea = pluginBounds.removeFromBottom(30);
         pluginBounds.removeFromBottom(padding);
-        pluginListBox.setBounds(pluginBounds);
 
+        pluginListBox.setBounds(pluginBounds);
         addButton.setBounds(addPluginArea.removeFromRight(80));
         addPluginArea.removeFromRight(padding);
         addPluginSelector.setBounds(addPluginArea);
     }
 }
+
 
 void TrackComponent::openFxWindow(int index)
 {
@@ -843,6 +869,19 @@ void TrackComponent::restoreOpenWindows(const juce::ValueTree& state)
                     }
                 }
             }
+        }
+    }
+}
+
+void TrackComponent::closeAllPluginWindows()
+{
+    openPluginWindows.clear();
+
+    for (auto& window : fxWindows)
+    {
+        if (window != nullptr)
+        {
+            window.deleteAndZero();
         }
     }
 }

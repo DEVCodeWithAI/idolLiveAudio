@@ -1,8 +1,13 @@
-#include "PresetBarComponent.h"
+﻿#include "PresetBarComponent.h"
 #include "../../Components/Helpers.h"
 #include "../../Application/Application.h"
 #include "../Windows/PresetManagerWindow.h"
 #include "../../Data/AppState.h" 
+
+// <<< FIX: Đường dẫn include chính xác đến MainComponent.h >>>
+#include "../MainComponent/MainComponent.h"
+#include "TrackComponent.h"
+#include "MasterUtilityComponent.h"
 
 PresetBarComponent::PresetBarComponent(AudioEngine& engine)
     : audioEngine(engine)
@@ -25,7 +30,7 @@ PresetBarComponent::PresetBarComponent(AudioEngine& engine)
     quickChoiceLabel.setFont(IdolUIHelpers::createRegularFont(14.0f));
 
     savePresetButton.onClick = [this] { savePreset(); };
-    loadButton.onClick = [this] { loadPresetFromButton(); }; // Changed this to call the UI-specific method
+    loadButton.onClick = [this] { loadPresetFromButton(); };
 
     managePresetsButton.onClick = [] {
         if (auto* app = dynamic_cast<idolLiveAudioApplication*>(juce::JUCEApplication::getInstance()))
@@ -148,7 +153,6 @@ void PresetBarComponent::savePreset()
     }
 }
 
-// Renamed method for clarity
 void PresetBarComponent::loadPresetFromButton()
 {
     if (AppState::getInstance().isPresetDirty())
@@ -183,7 +187,6 @@ void PresetBarComponent::loadPresetFromButton()
                 {
                     performLoadTask();
                 }
-                // Result 3 is Cancel, do nothing.
             }), true);
     }
     else
@@ -192,43 +195,42 @@ void PresetBarComponent::loadPresetFromButton()
     }
 }
 
-// NEW: Core logic for loading, can be called from anywhere
 void PresetBarComponent::performLoadTask()
 {
     auto selectedId = quickChoiceBox.getSelectedId();
     if (selectedId == 0) return;
 
-    auto presetName = quickChoiceBox.getText();
-    auto& presetManager = getSharedPresetManager();
-    auto presetFile = presetManager.getPresetDirectory().getChildFile(presetName + ".xml");
-
-    if (presetFile.existsAsFile())
+    if (auto* mainComp = findParentComponentOfClass<MainComponent>())
     {
-        presetManager.loadPreset(audioEngine, presetFile);
-        AppState::getInstance().markAsSaved(presetName);
+        mainComp->getVocalTrack().closeAllPluginWindows();
+        mainComp->getMusicTrack().closeAllPluginWindows();
+        mainComp->getMasterUtilityComponent().closeAllPluginWindows();
+
+        auto presetName = quickChoiceBox.getText();
+        auto& presetManager = getSharedPresetManager();
+        auto presetFile = presetManager.getPresetDirectory().getChildFile(presetName + ".xml");
+
+        if (presetFile.existsAsFile())
+        {
+            presetManager.loadPreset(audioEngine, presetFile);
+            AppState::getInstance().markAsSaved(presetName);
+        }
     }
 }
 
-
-// NEW: Public method to be called from AppState
 void PresetBarComponent::loadPresetByName(const juce::String& name)
 {
-    // Find the ID corresponding to the preset name
     for (int i = 1; i <= quickChoiceBox.getNumItems(); ++i)
     {
         if (quickChoiceBox.getItemText(i - 1) == name)
         {
             quickChoiceBox.setSelectedId(i, juce::dontSendNotification);
-
-            // Directly perform the load task, bypassing the "dirty" check dialog
             performLoadTask();
             return;
         }
     }
-
     DBG("Preset not found in ComboBox: " + name);
 }
-
 
 void PresetBarComponent::updateTexts()
 {

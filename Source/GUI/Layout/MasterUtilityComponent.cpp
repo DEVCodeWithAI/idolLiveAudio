@@ -1,4 +1,4 @@
-/*
+﻿/*
   ==============================================================================
 
     MasterUtilityComponent.cpp
@@ -64,9 +64,14 @@ MasterUtilityComponent::MasterUtilityComponent(AudioEngine& engine)
         };
 
     masterVolumeSlider.setSliderStyle(juce::Slider::LinearHorizontal);
-    masterVolumeSlider.setTextBoxStyle(juce::Slider::NoTextBox, true, 0, 0);
+    masterVolumeSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 50, 20);
     masterVolumeSlider.setRange(-60.0, 6.0, 0.1);
     masterVolumeSlider.setValue(0.0);
+
+    masterVolumeSlider.setColour(juce::Slider::textBoxTextColourId, juce::Colours::white);
+    masterVolumeSlider.setColour(juce::Slider::textBoxOutlineColourId, juce::Colours::black.withAlpha(0.5f));
+    masterVolumeSlider.setColour(juce::Slider::textBoxBackgroundColourId, juce::Colour(0xff2d2d2d));
+
     masterVolumeSlider.onValueChange = [this]
         {
             if (masterProcessor != nullptr)
@@ -172,4 +177,14 @@ void MasterUtilityComponent::changeListenerCallback(juce::ChangeBroadcaster* sou
 {
     if (source == &LanguageManager::getInstance())
         updateTexts();
+}
+
+void MasterUtilityComponent::closeAllPluginWindows()
+{
+    // Nếu cửa sổ plugin kênh tổng đang mở, hãy đóng nó lại.
+    // Thao tác này sẽ kích hoạt destructor và dọn dẹp các cửa sổ editor bên trong.
+    if (masterPluginsWindow != nullptr)
+    {
+        masterPluginsWindow.reset();
+    }
 }
