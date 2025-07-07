@@ -13,6 +13,7 @@ class TrackComponent;
 class MasterUtilityComponent;
 class PluginManagementComponent;
 class StatusBarComponent;
+class ProjectManagerComponent;
 
 class MainComponent : public juce::Component,
     public juce::ChangeListener,
@@ -62,6 +63,7 @@ private:
     CustomLookAndFeel customLookAndFeel;
 
     juce::ApplicationCommandManager commandManager;
+    std::unique_ptr<ProjectManagerComponent> projectManager;
 
     std::unique_ptr<MenubarComponent> menubar;
     std::unique_ptr<PresetBarComponent> presetBar;

@@ -50,26 +50,45 @@ PresetBarComponent::~PresetBarComponent()
 
 void PresetBarComponent::paint(juce::Graphics& g)
 {
-    g.fillAll(juce::Colour(0xff2d2d2d));
+    g.setColour(juce::Colours::darkgrey.withAlpha(0.2f));
+    g.fillRoundedRectangle(getLocalBounds().toFloat(), 5.0f);
     g.setColour(juce::Colours::black.withAlpha(0.5f));
-    g.drawRect(getLocalBounds(), 1);
+    g.drawRoundedRectangle(getLocalBounds().toFloat(), 5.0f, 1.0f);
 }
 
+// <<< SỬA: Viết lại hoàn toàn hàm resized() để có layout mới >>>
 void PresetBarComponent::resized()
 {
     auto bounds = getLocalBounds().reduced(10, 5);
-    auto rightSection = bounds.removeFromRight(325);
-    managePresetsButton.setBounds(rightSection.removeFromRight(160));
-    rightSection.removeFromRight(5);
-    savePresetButton.setBounds(rightSection);
+    const int padding = 10;
 
+    // 1. Chia toàn bộ thanh thành 2 phần: Trái (2/3) và Phải (1/3)
+    auto rightSection = bounds.removeFromRight(bounds.getWidth() / 3);
+    bounds.removeFromRight(padding);
     auto leftSection = bounds;
-    presetRunningLabel.setBounds(leftSection.removeFromLeft(120));
-    presetRunningValue.setBounds(leftSection.removeFromLeft(150).reduced(5, 0));
-    leftSection.removeFromLeft(10);
-    quickChoiceLabel.setBounds(leftSection.removeFromLeft(100));
-    quickChoiceBox.setBounds(leftSection.removeFromLeft(180).reduced(5, 0));
-    loadButton.setBounds(leftSection.removeFromLeft(80).reduced(5, 0));
+
+    // 2. Layout cho khu vực bên phải (Save, Manage)
+    {
+        managePresetsButton.setBounds(rightSection.removeFromRight(160));
+        rightSection.removeFromRight(5);
+        savePresetButton.setBounds(rightSection);
+    }
+
+    // 3. Layout cho khu vực bên trái
+    {
+        // Nút Load sẽ nằm ở ganz rìa phải của khu vực này
+        loadButton.setBounds(leftSection.removeFromRight(80));
+        leftSection.removeFromRight(padding);
+
+        // Các thành phần còn lại được layout trong không gian còn lại
+        quickChoiceBox.setBounds(leftSection.removeFromRight(180));
+        leftSection.removeFromRight(padding);
+        quickChoiceLabel.setBounds(leftSection.removeFromRight(100));
+        leftSection.removeFromRight(padding);
+
+        presetRunningLabel.setBounds(leftSection.removeFromLeft(120));
+        presetRunningValue.setBounds(leftSection);
+    }
 }
 
 void PresetBarComponent::populatePresetBox()

@@ -4,39 +4,42 @@
 #include "../../Data/LanguageManager/LanguageManager.h"
 
 // Forward declaration
-class AudioEngine; // Thêm forward declaration cho AudioEngine
+class AudioEngine;
+// <<< THÊM: Khai báo chuyển tiếp cho component logo >>>
+class LogoComponent;
 
 class MenubarComponent : public juce::Component,
     public juce::ChangeListener
 {
 public:
-    MenubarComponent(juce::AudioDeviceManager& deviceManager, AudioEngine& audioEngine); // Thêm AudioEngine vào constructor
+    MenubarComponent(juce::AudioDeviceManager& deviceManager, AudioEngine& audioEngine);
     ~MenubarComponent() override;
 
     void paint(juce::Graphics& g) override;
     void resized() override;
     void changeListenerCallback(juce::ChangeBroadcaster* source) override;
 
-    // <<< NEW METHOD >>>
-    /** Sets the selected output channel pair in the ComboBox by its name. */
     void setSelectedOutputChannelPairByName(const juce::String& pairName);
 
 private:
     void updateTexts();
     void updateButtonStates();
-    void populateOutputChannels(); // Thêm hàm này để điền danh sách kênh đầu ra
+    void populateOutputChannels();
 
     juce::AudioDeviceManager& deviceManager;
-    AudioEngine& audioEngine; // Biến tham chiếu tới AudioEngine
+    AudioEngine& audioEngine;
+
+    // <<< THÊM: Component cho Logo >>>
+    std::unique_ptr<LogoComponent> logo;
 
     // UI Elements
     juce::ComboBox languageBox;
     juce::TextButton asioPanelButton, vmPanelButton;
     juce::TextButton audioSettingsButton;
-    juce::ComboBox outputChannelSelector; // Thêm ComboBox cho kênh đầu ra
-    juce::Label outputChannelLabel;      // Thêm Label cho ComboBox
+    juce::ComboBox outputChannelSelector;
+    juce::Label outputChannelLabel;
 
-    juce::Array<int> availableOutputStereoStartIndices; // Lưu chỉ số bắt đầu của các cặp kênh stereo đầu ra
+    juce::Array<int> availableOutputStereoStartIndices;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MenubarComponent)
 };

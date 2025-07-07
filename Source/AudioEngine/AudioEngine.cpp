@@ -12,13 +12,28 @@
 #include "../GUI/Layout/MasterUtilityComponent.h"
 #include "juce_audio_devices/juce_audio_devices.h"
 #include "SoundPlayer.h"
+#include "../GUI/Components/TrackPlayerComponent.h"
 
 AudioEngine::AudioEngine(juce::AudioDeviceManager& manager)
     : deviceManager(manager),
-      vocalFxChain(Identifiers::VocalFx1State, Identifiers::VocalFx2State, Identifiers::VocalFx3State, Identifiers::VocalFx4State),
-      musicFxChain(Identifiers::MusicFx1State, Identifiers::MusicFx2State, Identifiers::MusicFx3State, Identifiers::MusicFx4State)
+    vocalFxChain(Identifiers::VocalFx1State, Identifiers::VocalFx2State, Identifiers::VocalFx3State, Identifiers::VocalFx4State),
+    musicFxChain(Identifiers::MusicFx1State, Identifiers::MusicFx2State, Identifiers::MusicFx3State, Identifiers::MusicFx4State)
 {
+    formatManager.registerBasicFormats();
+
+    audioRecorder = std::make_unique<AudioRecorder>(formatManager, "");
+    vocalTrackRecorder = std::make_unique<AudioRecorder>(formatManager, "Vocal");
+    musicTrackRecorder = std::make_unique<AudioRecorder>(formatManager, "Music");
+    rawVocalRecorder = std::make_unique<AudioRecorder>(formatManager, "Projects");
+    rawMusicRecorder = std::make_unique<AudioRecorder>(formatManager, "Projects");
+
     soundPlayer = std::make_unique<IdolAZ::SoundPlayer>();
+
+    // <<< SỬA: soundboardMixer giờ chỉ chứa SoundPlayer >>>
+    soundboardMixer.addInputSource(soundPlayer.get(), false);
+
+    // Player của REC & PLAY vẫn đi thẳng ra output
+    directOutputMixer.addInputSource(&playbackSource, false);
 }
 
 AudioEngine::~AudioEngine()
@@ -27,9 +42,6 @@ AudioEngine::~AudioEngine()
 
 void AudioEngine::audioDeviceAboutToStart(juce::AudioIODevice* device)
 {
-    DBG("audioDeviceAboutToStart CALLED! Device Name: " << device->getName()
-        << ", Sample Rate: " << device->getCurrentSampleRate()
-        << ", Buffer Size: " << device->getCurrentBufferSizeSamples());
     currentSampleRate = device->getCurrentSampleRate();
     currentBlockSize = device->getCurrentBufferSizeSamples();
 
@@ -38,17 +50,22 @@ void AudioEngine::audioDeviceAboutToStart(juce::AudioIODevice* device)
     vocalProcessor.prepare(stereoSpec);
     musicProcessor.prepare(stereoSpec);
     masterProcessor.prepare(stereoSpec);
-    
+
     for (auto& fxProc : vocalFxChain.processors) fxProc.prepare(stereoSpec);
     for (auto& fxProc : musicFxChain.processors) fxProc.prepare(stereoSpec);
 
-    soundPlayer->prepareToPlay(currentBlockSize, currentSampleRate);
+    soundboardMixer.prepareToPlay(currentBlockSize, currentSampleRate);
+    directOutputMixer.prepareToPlay(currentBlockSize, currentSampleRate);
+    playbackSource.prepareToPlay(currentBlockSize, currentSampleRate);
+    vocalTrackSource.prepareToPlay(currentBlockSize, currentSampleRate);
+    musicTrackSource.prepareToPlay(currentBlockSize, currentSampleRate);
 
     vocalBuffer.setSize(2, currentBlockSize);
     musicStereoBuffer.setSize(2, currentBlockSize);
     mixBuffer.setSize(2, currentBlockSize);
     soundboardBuffer.setSize(2, currentBlockSize);
-    
+    directOutputBuffer.setSize(2, currentBlockSize);
+
     fxSendBuffer.setSize(2, currentBlockSize);
     for (auto& buffer : vocalFxReturnBuffers) buffer.setSize(2, currentBlockSize);
     for (auto& buffer : musicFxReturnBuffers) buffer.setSize(2, currentBlockSize);
@@ -68,15 +85,18 @@ void AudioEngine::audioDeviceAboutToStart(juce::AudioIODevice* device)
 
 void AudioEngine::audioDeviceStopped()
 {
-    DBG("Audio device stopped."); 
     vocalProcessor.reset();
     musicProcessor.reset();
     masterProcessor.reset();
-    
+
     for (auto& fxProc : vocalFxChain.processors) fxProc.reset();
     for (auto& fxProc : musicFxChain.processors) fxProc.reset();
 
-    soundPlayer->releaseResources();
+    soundboardMixer.releaseResources();
+    directOutputMixer.releaseResources();
+    playbackSource.releaseResources();
+    vocalTrackSource.releaseResources();
+    musicTrackSource.releaseResources();
 
     currentSampleRate = 0.0;
     currentBlockSize = 0;
@@ -92,7 +112,6 @@ void AudioEngine::audioDeviceStopped()
         musicTrackComponent->populateInputChannels({}, {});
 }
 
-
 // <<< MODIFIED: Full audio callback logic with send/return levels >>>
 void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChannelData, int numInputChannels,
     float* const* outputChannelData, int numOutputChannels,
@@ -101,75 +120,109 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChan
     juce::ignoreUnused(context);
     juce::ScopedNoDenormals noDenormals;
 
+    // --- 1. Xóa tất cả các buffer làm việc ---
     vocalBuffer.clear();
     musicStereoBuffer.clear();
     mixBuffer.clear();
     soundboardBuffer.clear();
+    directOutputBuffer.clear();
     for (auto& buffer : vocalFxReturnBuffers) buffer.clear();
     for (auto& buffer : musicFxReturnBuffers) buffer.clear();
 
-    const int currentVocalIn = vocalInputChannel.load();
-    const int currentMusicLeftIn = musicInputLeftChannel.load();
-    const int currentMusicRightIn = musicInputRightChannel.load();
-    const int currentOutputLeft = selectedOutputLeftChannel.load();
-    const int currentOutputRight = selectedOutputRightChannel.load();
+    // Tạo và xóa các buffer tạm cho player của từng track
+    vocalPlayerBuffer.setSize(2, numSamples);
+    musicPlayerBuffer.setSize(2, numSamples);
+    vocalPlayerBuffer.clear();
+    musicPlayerBuffer.clear();
 
-    // --- Process main "dry" signal paths ---
+
+    // --- 2. Lấy tín hiệu từ các Player của Track ---
+    juce::AudioSourceChannelInfo vocalPlayerInfo(&vocalPlayerBuffer, 0, numSamples);
+    vocalTrackSource.getNextAudioBlock(vocalPlayerInfo);
+
+    juce::AudioSourceChannelInfo musicPlayerInfo(&musicPlayerBuffer, 0, numSamples);
+    musicTrackSource.getNextAudioBlock(musicPlayerInfo);
+
+
+    // --- 3. Xử lý Track Vocal ---
+    const int currentVocalIn = vocalInputChannel.load();
     if (juce::isPositiveAndBelow(currentVocalIn, numInputChannels))
     {
-        vocalBuffer.copyFrom(0, 0, inputChannelData[currentVocalIn], numSamples);
-        vocalBuffer.copyFrom(1, 0, inputChannelData[currentVocalIn], numSamples);
-        vocalProcessor.process(vocalBuffer);
-    }
+        // Lấy tín hiệu RAW từ input
+        juce::AudioBuffer<float> rawInput(const_cast<float**>(inputChannelData) + currentVocalIn, 1, numSamples);
+        vocalBuffer.copyFrom(0, 0, rawInput, 0, 0, numSamples);
+        vocalBuffer.copyFrom(1, 0, rawInput, 0, 0, numSamples);
 
+        // Ghi âm RAW ngay lập tức
+        rawVocalRecorder->processBlock(vocalBuffer, currentSampleRate);
+    }
+    // Cộng tín hiệu từ Vocal Player vào buffer
+    vocalBuffer.addFrom(0, 0, vocalPlayerBuffer, 0, 0, numSamples);
+    vocalBuffer.addFrom(1, 0, vocalPlayerBuffer, 1, 0, numSamples);
+
+    // Xử lý qua plugin của track
+    vocalProcessor.process(vocalBuffer);
+    // Ghi âm tín hiệu đã qua xử lý (Post-FX)
+    vocalTrackRecorder->processBlock(vocalBuffer, currentSampleRate);
+
+
+    // --- 4. Xử lý Track Music ---
+    const int currentMusicLeftIn = musicInputLeftChannel.load();
+    const int currentMusicRightIn = musicInputRightChannel.load();
     if (juce::isPositiveAndBelow(currentMusicLeftIn, numInputChannels) &&
         juce::isPositiveAndBelow(currentMusicRightIn, numInputChannels))
     {
-        musicStereoBuffer.copyFrom(0, 0, inputChannelData[currentMusicLeftIn], numSamples);
-        musicStereoBuffer.copyFrom(1, 0, inputChannelData[currentMusicRightIn], numSamples);
-        musicProcessor.process(musicStereoBuffer);
+        juce::AudioBuffer<float> rawInput(const_cast<float**>(inputChannelData) + currentMusicLeftIn, 2, numSamples);
+        musicStereoBuffer.copyFrom(0, 0, rawInput, 0, 0, numSamples);
+        musicStereoBuffer.copyFrom(1, 0, rawInput, 1, 0, numSamples);
+
+        rawMusicRecorder->processBlock(musicStereoBuffer, currentSampleRate);
     }
+    // Cộng tín hiệu từ Music Player vào buffer
+    musicStereoBuffer.addFrom(0, 0, musicPlayerBuffer, 0, 0, numSamples);
+    musicStereoBuffer.addFrom(1, 0, musicPlayerBuffer, 1, 0, numSamples);
 
+    // Xử lý qua plugin của track
+    musicProcessor.process(musicStereoBuffer);
+    musicTrackRecorder->processBlock(musicStereoBuffer, currentSampleRate);
+
+
+    // --- 5. Lấy tín hiệu từ Soundboard ---
     juce::AudioSourceChannelInfo soundboardChannelInfo(&soundboardBuffer, 0, numSamples);
-    soundPlayer->getNextAudioBlock(soundboardChannelInfo);
+    soundboardMixer.getNextAudioBlock(soundboardChannelInfo);
 
-    // --- Process FX Send/Return paths ---
-    // Vocal FX
+
+    // --- 6. Xử lý FX Sends/Returns ---
     for (int i = 0; i < 4; ++i)
     {
         fxSendBuffer.copyFrom(0, 0, vocalBuffer, 0, 0, numSamples);
         fxSendBuffer.copyFrom(1, 0, vocalBuffer, 1, 0, numSamples);
         fxSendBuffer.applyGain(vocalFxChain.processors[i].getSendLevel());
-        
         vocalFxChain.processors[i].process(fxSendBuffer);
-        
         vocalFxReturnBuffers[i].copyFrom(0, 0, fxSendBuffer, 0, 0, numSamples);
         vocalFxReturnBuffers[i].copyFrom(1, 0, fxSendBuffer, 1, 0, numSamples);
         vocalFxReturnBuffers[i].applyGain(vocalFxChain.processors[i].getReturnLevel());
     }
-
-    // Music FX
     for (int i = 0; i < 4; ++i)
     {
         fxSendBuffer.copyFrom(0, 0, musicStereoBuffer, 0, 0, numSamples);
         fxSendBuffer.copyFrom(1, 0, musicStereoBuffer, 1, 0, numSamples);
         fxSendBuffer.applyGain(musicFxChain.processors[i].getSendLevel());
-        
         musicFxChain.processors[i].process(fxSendBuffer);
-
         musicFxReturnBuffers[i].copyFrom(0, 0, fxSendBuffer, 0, 0, numSamples);
         musicFxReturnBuffers[i].copyFrom(1, 0, fxSendBuffer, 1, 0, numSamples);
         musicFxReturnBuffers[i].applyGain(musicFxChain.processors[i].getReturnLevel());
     }
-    
-    // --- Sum all signals into the main mix buffer ---
+
+
+    // --- 7. Tổng hợp tất cả vào Kênh Master ---
     mixBuffer.addFrom(0, 0, vocalBuffer, 0, 0, numSamples);
     mixBuffer.addFrom(1, 0, vocalBuffer, 1, 0, numSamples);
     mixBuffer.addFrom(0, 0, musicStereoBuffer, 0, 0, numSamples);
     mixBuffer.addFrom(1, 0, musicStereoBuffer, 1, 0, numSamples);
     mixBuffer.addFrom(0, 0, soundboardBuffer, 0, 0, numSamples);
     mixBuffer.addFrom(1, 0, soundboardBuffer, 1, 0, numSamples);
-    
+
     for (int i = 0; i < 4; ++i)
     {
         mixBuffer.addFrom(0, 0, vocalFxReturnBuffers[i], 0, 0, numSamples);
@@ -178,20 +231,33 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChan
         mixBuffer.addFrom(1, 0, musicFxReturnBuffers[i], 1, 0, numSamples);
     }
 
-    // --- Process the final Master Processor Chain ---
+    // Xử lý qua plugin Master và ghi âm kênh Master
     masterProcessor.process(mixBuffer);
+    audioRecorder->processBlock(mixBuffer, currentSampleRate);
 
-    // --- Final Output ---
+
+    // --- 8. Lấy tín hiệu đi thẳng ra Output (Player của REC & PLAY) ---
+    juce::AudioSourceChannelInfo directOutputChannelInfo(&directOutputBuffer, 0, numSamples);
+    directOutputMixer.getNextAudioBlock(directOutputChannelInfo);
+
+
+    // --- 9. Gửi tín hiệu cuối cùng ra loa ---
+    const int currentOutputLeft = selectedOutputLeftChannel.load();
+    const int currentOutputRight = selectedOutputRightChannel.load();
     for (int i = 0; i < numOutputChannels; ++i)
         juce::FloatVectorOperations::clear(outputChannelData[i], numSamples);
 
-    if (currentOutputLeft != -1 && juce::isPositiveAndBelow(currentOutputLeft, numOutputChannels))
+    if (juce::isPositiveAndBelow(currentOutputLeft, numOutputChannels))
+    {
         juce::FloatVectorOperations::copy(outputChannelData[currentOutputLeft], mixBuffer.getReadPointer(0), numSamples);
-
-    if (currentOutputRight != -1 && juce::isPositiveAndBelow(currentOutputRight, numOutputChannels))
+        juce::FloatVectorOperations::add(outputChannelData[currentOutputLeft], directOutputBuffer.getReadPointer(0), numSamples);
+    }
+    if (juce::isPositiveAndBelow(currentOutputRight, numOutputChannels))
+    {
         juce::FloatVectorOperations::copy(outputChannelData[currentOutputRight], mixBuffer.getReadPointer(1), numSamples);
+        juce::FloatVectorOperations::add(outputChannelData[currentOutputRight], directOutputBuffer.getReadPointer(1), numSamples);
+    }
 }
-
 
 TrackProcessor* AudioEngine::getFxProcessorForVocal(int index)
 {
@@ -365,4 +431,250 @@ void AudioEngine::updateActiveInputChannels(juce::AudioDeviceManager& manager)
     }
     if (musicTrackComponent != nullptr)
         musicTrackComponent->populateInputChannels(activeStereoNames, activeStereoStartIndices);
+}
+
+
+void AudioEngine::startPlayback(const juce::File& file)
+{
+    if (!file.existsAsFile()) return;
+
+    playbackSource.stop();
+    playbackSource.setSource(nullptr);
+    currentPlaybackReader.reset();
+
+    if (auto* reader = formatManager.createReaderFor(file))
+    {
+        currentPlaybackReader = std::make_unique<juce::AudioFormatReaderSource>(reader, true);
+        playbackSource.setSource(currentPlaybackReader.get(), 0, nullptr, reader->sampleRate);
+        playbackSource.start();
+    }
+}
+
+void AudioEngine::stopPlayback()
+{
+    playbackSource.stop();
+    playbackSource.setPosition(0);
+}
+
+void AudioEngine::pausePlayback()
+{
+    playbackSource.stop();
+}
+
+void AudioEngine::resumePlayback()
+{
+    playbackSource.start();
+}
+
+void AudioEngine::startTrackPlayback(TrackPlayerComponent::PlayerType type, const juce::File& file)
+{
+    if (!file.existsAsFile()) return;
+
+    auto* transportToUse = (type == TrackPlayerComponent::PlayerType::Vocal) ? &vocalTrackSource : &musicTrackSource;
+    auto* readerToUse = (type == TrackPlayerComponent::PlayerType::Vocal) ? &vocalTrackReader : &musicTrackReader;
+
+    transportToUse->stop();
+    transportToUse->setSource(nullptr);
+    readerToUse->reset();
+
+    if (auto* reader = formatManager.createReaderFor(file))
+    {
+        *readerToUse = std::make_unique<juce::AudioFormatReaderSource>(reader, true);
+        transportToUse->setSource(readerToUse->get(), 0, nullptr, reader->sampleRate);
+        transportToUse->start();
+    }
+}
+
+void AudioEngine::stopTrackPlayback(TrackPlayerComponent::PlayerType type)
+{
+    auto* transportToUse = (type == TrackPlayerComponent::PlayerType::Vocal) ? &vocalTrackSource : &musicTrackSource;
+    transportToUse->stop();
+    transportToUse->setPosition(0);
+}
+
+void AudioEngine::pauseTrackPlayback(TrackPlayerComponent::PlayerType type)
+{
+    auto* transportToUse = (type == TrackPlayerComponent::PlayerType::Vocal) ? &vocalTrackSource : &musicTrackSource;
+    transportToUse->stop();
+}
+
+void AudioEngine::resumeTrackPlayback(TrackPlayerComponent::PlayerType type)
+{
+    auto* transportToUse = (type == TrackPlayerComponent::PlayerType::Vocal) ? &vocalTrackSource : &musicTrackSource;
+    transportToUse->start();
+}
+
+void AudioEngine::setTrackPlayerMute(TrackPlayerComponent::PlayerType type, bool shouldBeMuted)
+{
+    auto* transportToUse = (type == TrackPlayerComponent::PlayerType::Vocal) ? &vocalTrackSource : &musicTrackSource;
+    transportToUse->setGain(shouldBeMuted ? 0.0f : 1.0f);
+}
+
+juce::AudioTransportSource& AudioEngine::getTrackTransportSource(TrackPlayerComponent::PlayerType type)
+{
+    return (type == TrackPlayerComponent::PlayerType::Vocal) ? vocalTrackSource : musicTrackSource;
+}
+
+AudioRecorder& AudioEngine::getTrackRecorder(TrackPlayerComponent::PlayerType type)
+{
+    return (type == TrackPlayerComponent::PlayerType::Vocal) ? *vocalTrackRecorder : *musicTrackRecorder;
+}
+
+// <<< THÊM CÁC HÀM MỚI VÀO CUỐI FILE >>>
+void AudioEngine::startProjectRecording(const juce::String& projectName)
+{
+    // SỬA: Sử dụng đúng tên biến isProjectPlaybackMode
+    if (isProjectPlaybackMode.load()) return;
+
+    stopProjectRecording();
+
+    currentProjectName = projectName;
+
+    auto projectBaseDir = rawVocalRecorder->getRecordingsDirectory();
+    auto projectDir = projectBaseDir.getChildFile(projectName);
+    projectDir.createDirectory();
+
+    currentVocalRawFile = projectDir.getChildFile(projectName + "_Vocal_RAW.wav");
+    currentMusicRawFile = projectDir.getChildFile(projectName + "_Music_RAW.wav");
+
+    rawVocalRecorder->startRecording(currentVocalRawFile);
+    rawMusicRecorder->startRecording(currentMusicRawFile);
+
+    isProjectPlaybackMode = true;
+}
+
+void AudioEngine::stopProjectRecording()
+{
+    // SỬA: Sử dụng đúng tên biến isProjectPlaybackMode
+    if (!isProjectPlaybackMode.load()) return;
+
+    rawVocalRecorder->stop();
+    rawMusicRecorder->stop();
+
+    juce::var vocalPath = currentVocalRawFile.getFullPathName();
+    juce::var musicPath = currentMusicRawFile.getFullPathName();
+
+    juce::DynamicObject::Ptr projectJson = new juce::DynamicObject();
+    projectJson->setProperty("VOCAL_RAW_PATH", vocalPath);
+    projectJson->setProperty("MUSIC_RAW_PATH", musicPath);
+
+    auto projectDir = currentVocalRawFile.getParentDirectory();
+    juce::File jsonFile = projectDir.getChildFile(currentProjectName + ".json");
+    jsonFile.replaceWithText(juce::JSON::toString(juce::var(projectJson.get())));
+
+    isProjectPlaybackMode = false;
+    currentProjectName.clear();
+}
+
+bool AudioEngine::isProjectRecording() const
+{
+    // SỬA: Sử dụng đúng tên biến isProjectPlaybackMode
+    return isProjectPlaybackMode.load();
+}
+
+namespace ProjectStateIDs
+{
+    const juce::Identifier name("name");
+    const juce::Identifier isPlaying("isPlaying");
+}
+
+void AudioEngine::loadProject(const juce::File& projectJsonFile)
+{
+    auto parsedJson = juce::JSON::parse(projectJsonFile);
+    if (!parsedJson.isObject()) return;
+
+    auto vocalPath = parsedJson.getProperty("VOCAL_RAW_PATH", {}).toString();
+    auto musicPath = parsedJson.getProperty("MUSIC_RAW_PATH", {}).toString();
+
+    juce::File vocalFile(vocalPath);
+    juce::File musicFile(musicPath);
+
+    if (vocalFile.existsAsFile() && musicFile.existsAsFile())
+    {
+        // <<< BẮT ĐẦU SỬA LỖI Ở ĐÂY >>>
+
+        // 1. Dừng tất cả các player khác trước khi load
+        stopLoadedProject();
+        stopPlayback();
+
+        // 2. Yêu cầu các transport giải phóng nguồn cũ một cách an toàn
+        vocalTrackSource.setSource(nullptr);
+        musicTrackSource.setSource(nullptr);
+
+        // 3. Bây giờ mới an toàn để xóa các bộ đọc cũ
+        vocalTrackReader.reset();
+        musicTrackReader.reset();
+
+        // <<< KẾT THÚC SỬA LỖI >>>
+
+
+        // 4. Bắt đầu load file mới vào các bộ đọc
+        if (auto* reader = formatManager.createReaderFor(vocalFile))
+        {
+            vocalTrackReader = std::make_unique<juce::AudioFormatReaderSource>(reader, true);
+            vocalTrackSource.setSource(vocalTrackReader.get(), 0, nullptr, reader->sampleRate);
+        }
+        if (auto* reader = formatManager.createReaderFor(musicFile))
+        {
+            musicTrackReader = std::make_unique<juce::AudioFormatReaderSource>(reader, true);
+            musicTrackSource.setSource(musicTrackReader.get(), 0, nullptr, reader->sampleRate);
+        }
+
+        isProjectPlaybackMode = true;
+        projectState.setProperty(ProjectStateIDs::name, projectJsonFile.getFileNameWithoutExtension(), nullptr);
+        projectState.setProperty(ProjectStateIDs::isPlaying, false, nullptr);
+
+        DBG("Project loaded: " + projectJsonFile.getFileNameWithoutExtension());
+    }
+}
+
+void AudioEngine::playLoadedProject()
+{
+    if (!isProjectPlaybackMode) return;
+    vocalTrackSource.start();
+    musicTrackSource.start();
+
+    projectState.setProperty(ProjectStateIDs::isPlaying, true, nullptr);
+}
+
+void AudioEngine::stopLoadedProject()
+{
+    // Dừng và reset vị trí các transport source như cũ
+    vocalTrackSource.stop();
+    musicTrackSource.stop();
+    vocalTrackSource.setPosition(0);
+    musicTrackSource.setPosition(0);
+
+    isProjectPlaybackMode = false;
+
+    projectState.setProperty(ProjectStateIDs::name, {}, nullptr);
+    projectState.setProperty(ProjectStateIDs::isPlaying, false, nullptr);
+}
+
+void AudioEngine::seekProject(double newPositionRatio)
+{
+    // Chỉ hoạt động khi ở chế độ project
+    if (isProjectPlaybackMode)
+    {
+        // Lấy độ dài từ một trong hai track (giả sử chúng bằng nhau)
+        const double duration = vocalTrackSource.getLengthInSeconds();
+        if (duration > 0)
+        {
+            const double newPosition = duration * newPositionRatio;
+            
+            // Đặt vị trí cho cả hai
+            vocalTrackSource.setPosition(newPosition);
+            musicTrackSource.setPosition(newPosition);
+        }
+    }
+}
+
+bool AudioEngine::isProjectPlaybackActive() const
+{
+    return isProjectPlaybackMode.load();
+}
+
+juce::ValueTree& AudioEngine::getProjectState()
+{
+    return projectState;
 }

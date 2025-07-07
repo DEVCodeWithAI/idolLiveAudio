@@ -106,7 +106,10 @@ public:
         moveUpButton.setBounds(reorderArea.removeFromTop(reorderArea.getHeight() / 2));
         moveDownButton.setBounds(reorderArea);
         bounds.removeFromRight(5);
-        auto controlsArea = bounds.removeFromRight(115);
+
+        // Tăng chiều ngang của vùng chứa các nút
+        auto controlsArea = bounds.removeFromRight(150);
+
         removeButton.setBounds(controlsArea.removeFromRight(30).reduced(2));
         controlsArea.removeFromRight(5);
         powerButton.setBounds(controlsArea.removeFromRight(50).reduced(2));
@@ -186,43 +189,9 @@ TrackComponent::TrackComponent(const juce::String& trackNameKey, const juce::Col
     addAndMakeVisible(muteButton);
     addAndMakeVisible(volumeSlider);
     addAndMakeVisible(levelMeter);
-
-    addAndMakeVisible(fxSectionLabel);
-    fxSectionLabel.setJustificationType(juce::Justification::centred);
-    fxSectionLabel.setFont(IdolUIHelpers::createRegularFont(15.0f));
-
-    for (int i = 0; i < 4; ++i)
-    {
-        addAndMakeVisible(fxButtons[i]);
-        fxButtons[i].setButtonText("FX " + juce::String(i + 1));
-        const int index = i;
-        fxButtons[i].onClick = [this, index] { openFxWindow(index); };
-
-        // <<< MODIFIED: Using TextButton and managing state manually >>>
-        addAndMakeVisible(fxMuteButtons[i]);
-        fxMuteButtons[i].setClickingTogglesState(true);
-        fxMuteButtons[i].setColour(juce::TextButton::buttonOnColourId, juce::Colours::red.withAlpha(0.9f));
-        fxMuteButtons[i].onClick = [this, index]
-            {
-                if (audioEngine == nullptr) return;
-
-                ProcessorBase* fxProcessor = nullptr;
-                if (channelType == ChannelType::Vocal)
-                    fxProcessor = audioEngine->getFxProcessorForVocal(index);
-                else
-                    fxProcessor = audioEngine->getFxProcessorForMusic(index);
-
-                if (fxProcessor != nullptr)
-                {
-                    const bool isNowMuted = fxMuteButtons[index].getToggleState();
-                    fxProcessor->setMuted(isNowMuted);
-
-                    // Manually update text to reflect state
-                    auto& lang = LanguageManager::getInstance();
-                    fxMuteButtons[index].setButtonText(isNowMuted ? lang.get("tracks.muted") : lang.get("tracks.mute"));
-                }
-            };
-    }
+    
+    fxSends = std::make_unique<FxSendsComponent>(*this);
+    addAndMakeVisible(*fxSends);
 
     addAndMakeVisible(pluginListLabel);
     addAndMakeVisible(pluginListBox);
@@ -291,6 +260,7 @@ TrackComponent::~TrackComponent()
     }
 }
 
+
 void TrackComponent::paint(juce::Graphics& g)
 {
     g.fillAll(juce::Colour(0xff2d2d2d));
@@ -300,7 +270,8 @@ void TrackComponent::paint(juce::Graphics& g)
     auto bounds = getLocalBounds().reduced(10);
     bounds.removeFromTop(40 + 10);
 
-    const int topSectionHeight = 120 + 80;
+    // <<< SỬA: Chỉ cần vẽ 2 vùng nền chính >>>
+    const int topSectionHeight = 170; // Chiều cao mới cho vùng trên cùng
     auto topSectionBounds = bounds.removeFromTop(topSectionHeight);
 
     g.setColour(juce::Colour(0xff212121));
@@ -313,131 +284,121 @@ void TrackComponent::paint(juce::Graphics& g)
     g.drawRoundedRectangle(bounds.toFloat(), 8.0f, 1.0f);
 }
 
-// <<< MODIFIED: Rewrote resized() for clarity and robustness >>>
+// <<< SỬA: Viết lại hoàn toàn hàm resized() để layout chính xác >>>
 void TrackComponent::resized()
 {
     auto bounds = getLocalBounds();
     const int padding = 10;
     bounds.reduce(padding, padding);
 
-    // Kích thước cố định từng vùng
+    // --- Định nghĩa chiều cao ---
     const int headerHeight = 40;
+    const int topControlsHeight = 170;
+    const int playerHeight = 80;
 
-    const int inputLineHeight = 30;
-    const int spacing = 5;
-    const int meterHeight = 20;
-
-    const int topControlsHeight = inputLineHeight + spacing + inputLineHeight + spacing + meterHeight;
-
-    const int fxControlsHeight = 80;
-
-    // Cắt từng vùng rõ ràng
+    // --- Cắt các vùng chính ---
     auto headerArea = bounds.removeFromTop(headerHeight);
     bounds.removeFromTop(padding);
-
     auto topControlsArea = bounds.removeFromTop(topControlsHeight);
     bounds.removeFromTop(padding);
+    auto bottomArea = bounds;
 
-    auto fxArea = bounds.removeFromTop(fxControlsHeight);
-    bounds.removeFromTop(padding);
-
-    auto pluginArea = bounds;
-
-    // Layout từng phần
+    // --- Layout ---
     trackLabel.setBounds(headerArea);
 
-    // ===== Top Controls Layout =====
+    // 1. Layout cho vùng điều khiển trên cùng (Input và FX)
     {
-        auto topBounds = topControlsArea.reduced(padding, 0);
+        auto area = topControlsArea.reduced(padding, 0);
 
-        auto inputLine1 = topBounds.removeFromTop(inputLineHeight);
+        const int fxHeight = 65;
+        auto fxArea = area.removeFromBottom(fxHeight);
+        fxSends->setBounds(fxArea);
+
+        area.removeFromBottom(10);
+
+        auto inputArea = area.reduced(0, 5);
+
+        const int rowHeight = 30;
+
+        auto inputLine1 = inputArea.removeFromTop(rowHeight);
         inputChannelLabel.setBounds(inputLine1.removeFromLeft(80));
-        inputLine1.removeFromLeft(padding);
+        inputLine1.removeFromLeft(5);
         inputChannelSelector.setBounds(inputLine1);
 
-        topBounds.removeFromTop(spacing);
+        inputArea.removeFromTop(5);
 
-        auto inputLine2 = topBounds.removeFromTop(inputLineHeight);
+        auto inputLine2 = inputArea.removeFromTop(rowHeight);
         lockButton.setBounds(inputLine2.removeFromLeft(30));
         inputLine2.removeFromLeft(padding);
         muteButton.setBounds(inputLine2.removeFromLeft(80));
         inputLine2.removeFromLeft(padding);
         volumeSlider.setBounds(inputLine2.reduced(0, 5));
 
-        topBounds.removeFromTop(spacing);
-
-        levelMeter.setBounds(topBounds.removeFromTop(meterHeight));
+        // Phần còn lại của inputArea sẽ dành cho LevelMeter
+        inputArea.removeFromTop(8);
+        levelMeter.setBounds(inputArea);
     }
 
-    // ===== FX Area Layout =====
+    // 2. Layout cho vùng dưới cùng (Plugins và Player)
     {
-        auto fxBounds = fxArea.reduced(padding, 0);
-        fxSectionLabel.setBounds(fxBounds.removeFromTop(25));
+        auto playerArea = bottomArea.removeFromBottom(playerHeight);
+        bottomArea.removeFromBottom(padding);
+        auto pluginArea = bottomArea;
 
-        const int fxSpacing = 5;
-        const int buttonWidth = (fxBounds.getWidth() - (3 * fxSpacing)) / 4;
-        const int totalHeight = fxBounds.getHeight();
-        const int fxButtonHeight = (totalHeight - fxSpacing) / 2;
-        const int muteButtonHeight = totalHeight - fxButtonHeight - fxSpacing;
+        trackPlayer->setBounds(playerArea);
 
-        int currentX = fxBounds.getX();
-
-        for (int i = 0; i < 4; ++i)
-        {
-            fxButtons[i].setBounds(currentX, fxBounds.getY(), buttonWidth, fxButtonHeight);
-            fxMuteButtons[i].setBounds(currentX, fxBounds.getY() + fxButtonHeight + fxSpacing, buttonWidth, muteButtonHeight);
-            currentX += buttonWidth + fxSpacing;
-        }
-    }
-
-    // ===== Plugin Area Layout =====
-    {
-        auto pluginBounds = pluginArea.reduced(padding);
+        auto pluginBounds = pluginArea;
         pluginListLabel.setBounds(pluginBounds.removeFromTop(30));
 
         auto addPluginArea = pluginBounds.removeFromBottom(30);
         pluginBounds.removeFromBottom(padding);
 
-        pluginListBox.setBounds(pluginBounds);
-        addButton.setBounds(addPluginArea.removeFromRight(80));
-        addPluginArea.removeFromRight(padding);
-        addPluginSelector.setBounds(addPluginArea);
+        auto indentedBounds = pluginBounds.reduced(5, 0);
+        pluginListBox.setBounds(indentedBounds);
+
+        auto indentedAddArea = addPluginArea.reduced(5, 0);
+        addButton.setBounds(indentedAddArea.removeFromRight(80));
+        indentedAddArea.removeFromRight(padding);
+        addPluginSelector.setBounds(indentedAddArea);
     }
 }
 
-
 void TrackComponent::openFxWindow(int index)
 {
-    if (!isPositiveAndBelow(index, 4))
+    if (!isPositiveAndBelow(index, 4) || audioEngine == nullptr)
         return;
 
+    // Đóng cửa sổ cũ nếu đang mở để tránh trùng lặp
     if (fxWindows[index] != nullptr)
     {
         fxWindows[index]->toFront(true);
         return;
     }
 
-    if (audioEngine == nullptr)
-    {
-        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon, "Error", "AudioEngine not available.");
-        return;
-    }
+    ProcessorBase* targetFxProcessor = (channelType == ChannelType::Vocal)
+                                     ? audioEngine->getFxProcessorForVocal(index)
+                                     : audioEngine->getFxProcessorForMusic(index);
 
-    ProcessorBase* targetFxProcessor = nullptr;
-    if (channelType == ChannelType::Vocal)
-        targetFxProcessor = audioEngine->getFxProcessorForVocal(index);
-    else
-        targetFxProcessor = audioEngine->getFxProcessorForMusic(index);
-
-    if (targetFxProcessor == nullptr)
-    {
-        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon, "Error", "Target FX processor is null.");
-        return;
-    }
+    if (targetFxProcessor == nullptr) return;
 
     auto windowName = trackLabel.getText() + " - FX " + juce::String(index + 1);
-    auto* newWindow = new FXChainWindow(windowName, *targetFxProcessor);
-    fxWindows[index] = newWindow;
+    fxWindows[index] = new FXChainWindow(windowName, *targetFxProcessor);
+}
+
+void TrackComponent::toggleFxMute(int index, bool shouldBeMuted)
+{
+    if (!isPositiveAndBelow(index, 4) || audioEngine == nullptr)
+        return;
+    
+    ProcessorBase* fxProcessor = (channelType == ChannelType::Vocal)
+                               ? audioEngine->getFxProcessorForVocal(index)
+                               : audioEngine->getFxProcessorForMusic(index);
+
+    if (fxProcessor != nullptr)
+    {
+        fxProcessor->setMuted(shouldBeMuted);
+        AppState::getInstance().setPresetDirty(true);
+    }
 }
 
 void TrackComponent::changeListenerCallback(juce::ChangeBroadcaster* source)
@@ -623,7 +584,21 @@ void TrackComponent::showPluginEditor(int row)
 
 LevelMeter& TrackComponent::getLevelMeter() { return levelMeter; }
 
-void TrackComponent::setAudioEngine(AudioEngine* engine) { audioEngine = engine; }
+void TrackComponent::setAudioEngine(AudioEngine* engine)
+{
+    audioEngine = engine;
+
+    // Khởi tạo trackPlayer ở đây, khi đã chắc chắn có AudioEngine
+    if (audioEngine && trackPlayer == nullptr)
+    {
+        TrackPlayerComponent::PlayerType playerType = (channelType == ChannelType::Vocal) ?
+            TrackPlayerComponent::PlayerType::Vocal :
+            TrackPlayerComponent::PlayerType::Music;
+        trackPlayer = std::make_unique<TrackPlayerComponent>(playerType, *audioEngine);
+        addAndMakeVisible(*trackPlayer);
+        resized(); // Gọi lại resized để đặt vị trí cho component mới
+    }
+}
 
 void TrackComponent::populateInputChannels(const juce::StringArray& channelNames, const juce::Array<int>& channelIndices)
 {
@@ -695,35 +670,43 @@ void TrackComponent::setSelectedInputChannelByName(const juce::String& channelNa
 
 void TrackComponent::updateTexts()
 {
+    // 1. Lấy thực thể của LanguageManager
     auto& lang = LanguageManager::getInstance();
+
+    // 2. Cập nhật văn bản cho các component con của TrackComponent
     trackLabel.setText(lang.get(nameKey), juce::dontSendNotification);
     inputChannelLabel.setText(lang.get("tracks.input"), juce::dontSendNotification);
     inputChannelSelector.setTextWhenNothingSelected(lang.get("tracks.pleaseSelectDevice"));
-    updateMuteButtonState();
+    
     pluginListLabel.setText(lang.get("tracks.activePlugins"), juce::dontSendNotification);
     addButton.setButtonText(lang.get("tracks.add"));
     addPluginSelector.setTextWhenNothingSelected(lang.get("tracks.addPluginPlaceholder"));
+    
+    // Cập nhật trạng thái cho nút Mute chính của track
+    updateMuteButtonState();
 
-    fxSectionLabel.setText(lang.get("tracks.fxSends"), juce::dontSendNotification);
-    for (int i = 0; i < 4; ++i)
+    // 3. Cập nhật trạng thái cho FxSendsComponent (component con)
+    // Kiểm tra xem audioEngine đã được liên kết chưa
+    if (audioEngine)
     {
-        // <<< MODIFIED: Update text based on processor state >>>
-        bool isMuted = false;
-        if (audioEngine)
+        // Lặp qua 4 bộ xử lý FX
+        for (int i = 0; i < 4; ++i)
         {
-            ProcessorBase* fxProcessor = nullptr;
-            if (channelType == ChannelType::Vocal)
-                fxProcessor = audioEngine->getFxProcessorForVocal(i);
-            else
-                fxProcessor = audioEngine->getFxProcessorForMusic(i);
-
+            // Lấy con trỏ đến bộ xử lý FX tương ứng
+            ProcessorBase* fxProcessor = (channelType == ChannelType::Vocal)
+                                       ? audioEngine->getFxProcessorForVocal(i)
+                                       : audioEngine->getFxProcessorForMusic(i);
+            
+            // Nếu bộ xử lý tồn tại, lấy trạng thái Mute của nó
             if (fxProcessor)
-                isMuted = fxProcessor->isMuted();
+            {
+                // Gọi hàm của FxSendsComponent để nó tự cập nhật trạng thái nút Mute của mình
+                fxSends->updateMuteButtonState(i, fxProcessor->isMuted());
+            }
         }
-        fxMuteButtons[i].setToggleState(isMuted, juce::dontSendNotification);
-        fxMuteButtons[i].setButtonText(isMuted ? lang.get("tracks.muted") : lang.get("tracks.mute"));
     }
-
+    
+    // 4. Yêu cầu vẽ lại toàn bộ component để hiển thị thay đổi
     repaint();
 }
 

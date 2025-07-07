@@ -34,6 +34,16 @@
         "pleaseSelectDevice": "Vui lòng chọn thiết bị âm thanh",
         "fxSends": "GỬI HIỆU ỨNG"
     },
+	"trackPlayer": {
+        "title": "TRÌNH PHÁT",
+        "rec": "THU",
+        "play": "PHÁT",
+        "pause": "DỪNG",
+        "stop": "NGỪNG",
+        "list": "DS",
+        "load": "TẢI",
+        "mute": "TẮT"
+    },
     "pinnedPlugin": {
         "title": "PLUGIN ĐÃ GHIM",
         "placeholder": "Giao diện Plugin sẽ xuất hiện ở đây",
@@ -78,7 +88,9 @@
         "saveChangesMessage": "Bạn có những thay đổi chưa được lưu. Bạn có muốn lưu chúng vào một preset mới trước khi tiếp tục không?",
         "saveButton": "Lưu với tên mới...",
         "dontSaveButton": "Không lưu",
-        "cancelButton": "Hủy"
+        "cancelButton": "Hủy",
+		"notReadyTitle": "Tính Năng Chưa Sẵn Sàng",
+        "featureNotReadyMessage": "Tính năng này sẽ được triển khai ở bước tiếp theo."
     },
     "pluginManagerWindow": {
         "title": "Quản lý Plugin",
@@ -107,7 +119,18 @@
     },
     "masterUtility": {
         "masterPlugins": "Plugin Kênh Tổng",
-        "quickKeySettings": "Cài đặt Phím tắt"
+        "quickKeySettings": "Cài đặt Phím tắt",
+        "recAndPlayTitle": "GHI ÂM & PHÁT",
+        "record": "Ghi Âm",
+        "play": "Phát",
+        "pause": "Dừng",
+        "stop": "Ngừng",
+        "list": "DS Ghi"
+    },
+    "recordingListWindow": {
+        "title": "Danh sách Bản ghi",
+        "play": "Phát",
+        "delete": "Xóa"
     },
     "masterPluginsWindow": {
         "title": "Plugin Kênh Tổng"
@@ -129,10 +152,30 @@
         "message": "idolLiveAudio đã gặp một lỗi nghiêm trọng và cần phải đóng. Vui lòng sao chép báo cáo dưới đây và gửi đi để được hỗ trợ.",
         "copyButton": "Sao chép Báo cáo"
     },
+    "projectManager": {
+		"loaded": "Project đang dùng:",
+		"noProjectLoaded": "Chưa nạp Project",
+        "record": "Thu Âm Project",
+        "manage": "Quản Lý Project",
+        "recording": "Đang Thu...",
+        "play": "Phát Project",
+        "stop": "Dừng Project",
+        "recordTitle": "Thu Âm Project Mới",
+        "recordMessage": "Vui lòng nhập tên cho project mới của bạn.",
+        "projectNameLabel": "Tên Project:",
+        "recordButton": "Thu Âm"
+    },
     "scanProcess": {
         "title": "Đang quét",
         "message": "Đang quét plugin, vui lòng đợi...",
         "completeTitle": "Quét hoàn tất",
         "completeMessage": "Quá trình quét plugin đã kết thúc."
+    },
+    "projectListWindow": {
+        "title": "Quản Lý Project",
+        "play": "Phát",
+        "delete": "Xóa",
+        "deleteConfirmTitle": "Xác Nhận Xóa",
+        "deleteConfirmMessage": "Bạn có chắc chắn muốn xóa vĩnh viễn project '{{projectName}}' và toàn bộ các file audio bên trong không?"
     }
 }

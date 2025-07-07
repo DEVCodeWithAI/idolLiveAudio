@@ -1,21 +1,28 @@
-# idolLiveAudio
+# idolLiveAudio (v1.1.0)
 
 **Lightweight, open-source Audio Plugin Host for creators, singers, and streamers.**
 
-> Built with the assistance of AI (Gemini + ChatGPT)  
+> Built with the assistance of AI (Gemini), OpenAI (ChatGPT), My Framework FFAI (Meta Llama 3.3 70B)
 
 ---
-## 🖥️ Screenshot
-![idolLiveAudio](Resources/SplashScreen.png)
 
+## 🖥️ Screenshot
+
+![idolLiveAudio](Resources/SplashScreen.png)  
 ![idolLiveAudio Main Interface](docs/images/screenshot_main.png)
 
 Lightweight, intuitive interface for managing plugins and soundboard during your live performances.
 
+---
+
 ## 🚀 Key Features
-✅ Supports Waves, Antares Auto-Tune Pro - Auto-key, and VST3 plugins  
-✅ Realtime audio processing with low latency  
+
+✅ Supports Waves, Antares Auto-Tune Pro, and all VST3 plugins  
+✅ Real-time audio processing with low latency  
 ✅ Flexible plugin chain management per track  
+✅ Dedicated FX Chains for parallel processing (Reverb, Delay, etc.)  
+✅ Integrated Player & Recorder for each track (Post-FX)  
+✅ Multi-Track Project System for recording RAW, unprocessed audio  
 ✅ Soundboard with quick sound triggering  
 ✅ Simple, user-friendly interface  
 ✅ Developed with JUCE (C++20)  
@@ -25,10 +32,36 @@ Lightweight, intuitive interface for managing plugins and soundboard during your
 
 ## 🌐 About idolLiveAudio
 
-idolLiveAudio is designed to simplify professional audio processing for singers, streamers, and creators.  
+idolLiveAudio is designed to simplify professional audio processing for singers, streamers, and creators.
+
 It provides an easy-to-use plugin host with powerful features, allowing anyone to enhance their voice or music with high-end plugins.
 
-This project demonstrates how AI tools like Gemini and ChatGPT can empower developers to build production-ready software, even without expert-level coding knowledge.
+This project demonstrates how AI tools like Gemini can empower developers to build production-ready software, even without expert-level coding knowledge.
+
+---
+
+## ✨ What's New in v1.1.0: Full Mini-DAW Functionality
+
+Version 1.1.0 transforms idolLiveAudio from a simple plugin host into a powerful Mini-DAW with a complete recording and playback workflow.
+
+### 1. Dedicated FX Chains
+
+Each track (Vocal and Music) now has 4 dedicated FX Send channels. This allows you to use effects like reverb and delay in parallel, just like in a professional DAW, giving you more control over your sound without cluttering your main plugin chain.
+
+### 2. Per-Track Player & Recorder
+
+Every track now features its own integrated Player and Recorder:
+
+- **Load**: Load any audio file (like a backing track or instrumental) directly into a track to have it processed by that track's plugins.
+- **Record (Post-FX)**: Record the output of a single track after all its plugins and FX have been applied. This is perfect for quickly capturing a processed vocal take or an idea.
+
+### 3. Multi-Track Project System
+
+This is the biggest new feature, enabling a full production workflow:
+
+- **Record Project (RAW)**: Simultaneously record the RAW, unprocessed input from both the Vocal and Music tracks. This captures your performance in its purest form, perfect for mixing and mastering later.
+- **Manage Projects**: All your recorded projects are saved neatly. The Project Manager lets you view, load, or delete them.
+- **Synchronized Playback**: Load a project, and both RAW tracks will play back in perfect sync. The seek bars are linked, allowing you to navigate your project as a single piece.
 
 ---
 
@@ -42,7 +75,7 @@ This project demonstrates how AI tools like Gemini and ChatGPT can empower devel
 - Build and run  
 
 **Option 2: Download Prebuilt Release**  
-- Check the [Releases](https://github.com/DEVCodeWithAI/idolLiveAudio/releases) section  
+- Check the [Releases](https://github.com/DEVCodeWithAI/idolLiveAudio/releases) section for v1.1.0  
 - Download the latest `.zip` package  
 - Extract and run the application  
 

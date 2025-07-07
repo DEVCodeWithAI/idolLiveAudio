@@ -1,4 +1,4 @@
-﻿/*
+/*
   ==============================================================================
 
     MainComponent.cpp
@@ -16,7 +16,8 @@
 #include "../../Data/SoundboardManager.h"
 #include "../../AudioEngine/SoundPlayer.h"
 #include "../../Application/Application.h"
-#include "../../Data/AppState.h" 
+#include "../../Data/AppState.h"
+#include "../Components/ProjectManagerComponent.h"
 
 
 #if JUCE_WINDOWS && JUCE_ASIO
@@ -48,6 +49,9 @@ MainComponent::MainComponent()
             // Now it's safe to load the rest of the session state.
             AppState::getInstance().loadPostDeviceState(*this);
         };
+        
+    // <<< THÊM KHỞI TẠO COMPONENT MỚI >>>
+    projectManager = std::make_unique<ProjectManagerComponent>(audioEngine);
 
     menubar = std::make_unique<MenubarComponent>(*deviceManager, audioEngine);
     presetBar = std::make_unique<PresetBarComponent>(audioEngine);
@@ -57,6 +61,15 @@ MainComponent::MainComponent()
     pluginManagement = std::make_unique<PluginManagementComponent>();
     statusBar = std::make_unique<StatusBarComponent>();
 
+    menubar = std::make_unique<MenubarComponent>(*deviceManager, audioEngine);
+    presetBar = std::make_unique<PresetBarComponent>(audioEngine);
+    vocalTrack = std::make_unique<TrackComponent>("tracks.vocal", juce::Colour(0xff60a5fa), TrackComponent::ChannelType::Vocal);
+    musicTrack = std::make_unique<TrackComponent>("tracks.music", juce::Colour(0xff4ade80), TrackComponent::ChannelType::Music);
+    masterUtilityColumn = std::make_unique<MasterUtilityComponent>(audioEngine);
+    pluginManagement = std::make_unique<PluginManagementComponent>();
+    statusBar = std::make_unique<StatusBarComponent>();
+
+    addAndMakeVisible(*projectManager);
     addAndMakeVisible(*menubar);
     addAndMakeVisible(*presetBar);
     addAndMakeVisible(*vocalTrack);
@@ -262,22 +275,50 @@ void MainComponent::resized()
 {
     auto totalBounds = getLocalBounds();
     const int padding = 5;
+
+    // --- Các thanh trên cùng và dưới cùng vẫn giữ nguyên ---
     auto menubarArea = totalBounds.removeFromTop(50);
     auto presetBarArea = totalBounds.removeFromTop(50);
     auto statusBarArea = totalBounds.removeFromBottom(40);
-    auto middleArea = totalBounds;
+
     if (menubar) menubar->setBounds(menubarArea.reduced(padding, 0));
     if (presetBar) presetBar->setBounds(presetBarArea.reduced(padding, 0));
     if (statusBar) statusBar->setBounds(statusBarArea.reduced(padding, 0));
-    middleArea.reduce(padding, 0);
-    auto masterUtilityArea = middleArea.removeFromRight(middleArea.getWidth() / 3);
-    middleArea.removeFromRight(padding);
-    auto leftAndMiddleColumns = middleArea;
-    if (masterUtilityColumn) masterUtilityColumn->setBounds(masterUtilityArea);
-    auto pluginMgmtArea = leftAndMiddleColumns.removeFromBottom(60);
-    leftAndMiddleColumns.removeFromBottom(padding);
-    auto tracksArea = leftAndMiddleColumns;
-    if (pluginManagement) pluginManagement->setBounds(pluginMgmtArea);
+
+    // Vùng làm việc chính còn lại
+    auto mainArea = totalBounds.reduced(padding, 0);
+
+    // --- Bắt đầu chia layout mới ---
+
+    // 1. Chia mainArea thành 2 cột: Cột Trái (cho Tracks) và Cột Phải (cho Master)
+    auto rightColumn = mainArea.removeFromRight(mainArea.getWidth() / 3);
+    mainArea.removeFromRight(padding); // Khoảng cách giữa 2 cột
+    auto leftColumn = mainArea;
+
+    // 2. Đặt vị trí cho Cột Phải
+    if (masterUtilityColumn)
+        masterUtilityColumn->setBounds(rightColumn);
+
+    // 3. Xử lý layout cho Cột Trái
+    const int projectManagerHeight = 60;
+    const int pluginManagementHeight = 60;
+
+    // Lấy vùng cho Project Manager từ trên cùng của Cột Trái
+    auto projectManagerArea = leftColumn.removeFromTop(projectManagerHeight);
+    leftColumn.removeFromTop(padding);
+
+    // Lấy vùng cho Plugin Management từ dưới cùng của Cột Trái
+    auto pluginManagementArea = leftColumn.removeFromBottom(pluginManagementHeight);
+    leftColumn.removeFromBottom(padding);
+
+    // Phần còn lại của Cột Trái dành cho 2 Track Component
+    auto tracksArea = leftColumn;
+
+    // Đặt vị trí cho Project Manager và Plugin Management
+    if (projectManager) projectManager->setBounds(projectManagerArea);
+    if (pluginManagement) pluginManagement->setBounds(pluginManagementArea);
+
+    // Chia đôi vùng tracksArea cho Vocal và Music
     if (vocalTrack) vocalTrack->setBounds(tracksArea.removeFromLeft(tracksArea.getWidth() / 2));
     tracksArea.removeFromLeft(padding);
     if (musicTrack) musicTrack->setBounds(tracksArea);

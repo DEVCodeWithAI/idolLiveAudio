@@ -34,6 +34,16 @@
         "pleaseSelectDevice": "Please select an audio device",
         "fxSends": "FX SENDS"
     },
+	"trackPlayer": {
+        "title": "TRACK PLAYER",
+        "rec": "REC",
+        "play": "PLAY",
+        "pause": "PAUSE",
+        "stop": "STOP",
+        "list": "LIST",
+        "load": "LOAD",
+        "mute": "MUTE"
+    },
     "pinnedPlugin": {
         "title": "PINNED PLUGIN",
         "placeholder": "Plugin UI Appears Here",
@@ -78,7 +88,9 @@
         "saveChangesMessage": "You have unsaved changes. Do you want to save them to a new preset before continuing?",
         "saveButton": "Save As...",
         "dontSaveButton": "Don't Save",
-        "cancelButton": "Cancel"
+        "cancelButton": "Cancel",
+		"notReadyTitle": "Feature Not Ready",
+        "featureNotReadyMessage": "This feature will be implemented in the next step."
     },
     "pluginManagerWindow": {
         "title": "Plugin Manager",
@@ -107,7 +119,18 @@
     },
     "masterUtility": {
         "masterPlugins": "Master Plugins",
-        "quickKeySettings": "QuickKey Settings"
+        "quickKeySettings": "QuickKey Settings",
+        "recAndPlayTitle": "REC & PLAY",
+        "record": "Record",
+        "play": "Play",
+        "pause": "Pause",
+        "stop": "Stop",
+        "list": "List"
+    },
+    "recordingListWindow": {
+        "title": "Recorded Tracks",
+        "play": "Play",
+        "delete": "Delete"
     },
     "masterPluginsWindow": {
         "title": "Master Channel Plugins"
@@ -129,11 +152,31 @@
         "message": "idolLiveAudio has encountered a critical error and needs to close. Please copy the report below and submit it for support.",
         "copyButton": "Copy Report"
     },
+    "projectManager": {
+		"loaded": "Project Loaded:",
+		"noProjectLoaded": "No Project Loaded",
+        "record": "Record Project",
+        "manage": "Manage Projects",
+        "recording": "Recording...",
+        "play": "Play Project",
+        "stop": "Stop Project",
+        "recordTitle": "Record New Project",
+        "recordMessage": "Please enter a name for your new project.",
+        "projectNameLabel": "Project Name:",
+        "recordButton": "Record"
+    },
     "scanProcess": {
         "title": "Scanning",
         "message": "Scanning for plugins, please wait...",
         "completeTitle": "Scan Complete",
         "completeMessage": "Plugin scanning has finished."
+    },
+	"projectListWindow": {
+        "title": "Manage Projects",
+        "play": "Play",
+        "delete": "Delete",
+        "deleteConfirmTitle": "Confirm Deletion",
+        "deleteConfirmMessage": "Are you sure you want to permanently delete the project '{{projectName}}' and all its audio files?"
     }
 
 }

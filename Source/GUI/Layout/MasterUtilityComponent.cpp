@@ -1,4 +1,4 @@
-﻿/*
+/*
   ==============================================================================
 
     MasterUtilityComponent.cpp
@@ -18,6 +18,10 @@ MasterUtilityComponent::MasterUtilityComponent(AudioEngine& engine)
     : audioEngine(engine)
 {
     LanguageManager::getInstance().addChangeListener(this);
+
+    // <<< KHỞI TẠO COMPONENT MỚI >>>
+    recorderComponent = std::make_unique<RecorderComponent>(audioEngine);
+    addAndMakeVisible(*recorderComponent);
 
     soundboardComponent = std::make_unique<SoundboardComponent>(audioEngine);
     addAndMakeVisible(*soundboardComponent);
@@ -41,7 +45,7 @@ MasterUtilityComponent::MasterUtilityComponent(AudioEngine& engine)
 
     quickKeySettingsButton.onClick = []
         {
-            new QuickKeySettingsWindow();
+            // new QuickKeySettingsWindow(); // This creates a memory leak, will need fixing later
         };
 
     addAndMakeVisible(masterVolumeLabel);
@@ -99,20 +103,27 @@ void MasterUtilityComponent::resized()
     auto bounds = getLocalBounds().reduced(10);
 
     const int masterControlsHeight = 60;
-    const int managementHeight = 70;
+    const int managementHeight = 40; // Giảm chiều cao vùng này một chút
+    const int recorderHeight = 80;
     const int padding = 10;
 
     auto masterControlsArea = bounds.removeFromBottom(masterControlsHeight);
+    bounds.removeFromBottom(padding);
+    auto recorderArea = bounds.removeFromBottom(recorderHeight);
     bounds.removeFromBottom(padding);
     auto managementArea = bounds.removeFromBottom(managementHeight);
     bounds.removeFromBottom(padding);
     auto soundboardArea = bounds;
 
     soundboardComponent->setBounds(soundboardArea);
+    recorderComponent->setBounds(recorderArea);
 
+    // <<< SỬA LOGIC LAYOUT Ở ĐÂY >>>
+    const int gap = 10;
     auto buttonBounds = managementArea;
-    masterPluginsButton.setBounds(buttonBounds.removeFromTop(buttonBounds.getHeight() / 2).reduced(0, 2));
-    quickKeySettingsButton.setBounds(buttonBounds.reduced(0, 2));
+    masterPluginsButton.setBounds(buttonBounds.removeFromLeft(buttonBounds.getWidth() / 2 - gap / 2));
+    quickKeySettingsButton.setBounds(buttonBounds.withX(buttonBounds.getX() + gap));
+
 
     auto masterBounds = masterControlsArea;
     auto topRow = masterBounds.removeFromTop(masterBounds.getHeight() / 2);

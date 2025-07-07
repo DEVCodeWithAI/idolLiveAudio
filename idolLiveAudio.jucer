@@ -8,8 +8,8 @@
   <MAINGROUP id="B708Sa" name="idolLiveAudio">
     <GROUP id="{AD963046-D105-7E97-82F8-04E24F432A02}" name="Resources">
       <GROUP id="{08105253-0E21-EFD1-B951-19A48B0626BC}" name="Languages">
-        <FILE id="H93WUb" name="lang_en.json" compile="0" resource="1" file="Resources/Languages/lang_en.json"/>
-        <FILE id="BdZ9S8" name="lang_vi.json" compile="0" resource="1" file="Resources/Languages/lang_vi.json"/>
+        <FILE id="BURuYq" name="lang_en.json" compile="0" resource="1" file="Resources/Languages/lang_en.json"/>
+        <FILE id="ypIt8a" name="lang_vi.json" compile="0" resource="1" file="Resources/Languages/lang_vi.json"/>
       </GROUP>
       <FILE id="etZReR" name="icon_128x128.png" compile="0" resource="1"
             file="Resources/icon_128x128.png"/>
@@ -34,6 +34,24 @@
               file="Source/Components/LockableHeader.h"/>
       </GROUP>
       <GROUP id="{3E3506BA-0FCC-E4C9-5279-D85552AFD218}" name="GUI">
+        <GROUP id="{BA2BD80C-7A5E-8E20-CA4D-B1E248C181BC}" name="Components">
+          <FILE id="N2Z0ia" name="FxSendsComponent.cpp" compile="1" resource="0"
+                file="Source/GUI/Components/FxSendsComponent.cpp"/>
+          <FILE id="NcroLF" name="FxSendsComponent.h" compile="0" resource="0"
+                file="Source/GUI/Components/FxSendsComponent.h"/>
+          <FILE id="GkSF59" name="ProjectManagerComponent.cpp" compile="1" resource="0"
+                file="Source/GUI/Components/ProjectManagerComponent.cpp"/>
+          <FILE id="hikmmz" name="ProjectManagerComponent.h" compile="0" resource="0"
+                file="Source/GUI/Components/ProjectManagerComponent.h"/>
+          <FILE id="gZvVZ5" name="RecorderComponent.cpp" compile="1" resource="0"
+                file="Source/GUI/Components/RecorderComponent.cpp"/>
+          <FILE id="RHFKxV" name="RecorderComponent.h" compile="0" resource="0"
+                file="Source/GUI/Components/RecorderComponent.h"/>
+          <FILE id="uStzJI" name="TrackPlayerComponent.cpp" compile="1" resource="0"
+                file="Source/GUI/Components/TrackPlayerComponent.cpp"/>
+          <FILE id="MPNL16" name="TrackPlayerComponent.h" compile="0" resource="0"
+                file="Source/GUI/Components/TrackPlayerComponent.h"/>
+        </GROUP>
         <GROUP id="{245BE511-90B6-7324-D1FE-457CB6D50C58}" name="Windows">
           <FILE id="V4uNgk" name="FXChainWindow.cpp" compile="1" resource="0"
                 file="Source/GUI/Windows/FXChainWindow.cpp"/>
@@ -52,10 +70,18 @@
                 file="Source/GUI/Windows/PresetManagerWindow.cpp"/>
           <FILE id="k50uan" name="PresetManagerWindow.h" compile="0" resource="0"
                 file="Source/GUI/Windows/PresetManagerWindow.h"/>
+          <FILE id="C5pEU8" name="ProjectListWindow.cpp" compile="1" resource="0"
+                file="Source/GUI/Windows/ProjectListWindow.cpp"/>
+          <FILE id="ftU5qu" name="ProjectListWindow.h" compile="0" resource="0"
+                file="Source/GUI/Windows/ProjectListWindow.h"/>
           <FILE id="xDVliV" name="QuickKeySettingsWindow.cpp" compile="1" resource="0"
                 file="Source/GUI/Windows/QuickKeySettingsWindow.cpp"/>
           <FILE id="rpjzwa" name="QuickKeySettingsWindow.h" compile="0" resource="0"
                 file="Source/GUI/Windows/QuickKeySettingsWindow.h"/>
+          <FILE id="j02swg" name="RecordingListWindow.cpp" compile="1" resource="0"
+                file="Source/GUI/Windows/RecordingListWindow.cpp"/>
+          <FILE id="tgGF9C" name="RecordingListWindow.h" compile="0" resource="0"
+                file="Source/GUI/Windows/RecordingListWindow.h"/>
           <FILE id="Jx79xF" name="SplashScreenComponent.cpp" compile="1" resource="0"
                 file="Source/GUI/Windows/SplashScreenComponent.cpp"/>
           <FILE id="RtULAe" name="SplashScreenComponent.h" compile="0" resource="0"
@@ -134,6 +160,9 @@
       <GROUP id="{AD636BCD-AB4C-FE16-78B9-B75CD783E797}" name="AudioEngine">
         <FILE id="mMkX1e" name="AudioEngine.cpp" compile="1" resource="0" file="Source/AudioEngine/AudioEngine.cpp"/>
         <FILE id="ofIrng" name="AudioEngine.h" compile="0" resource="0" file="Source/AudioEngine/AudioEngine.h"/>
+        <FILE id="cF5x3m" name="AudioRecorder.cpp" compile="1" resource="0"
+              file="Source/AudioEngine/AudioRecorder.cpp"/>
+        <FILE id="SNkmLF" name="AudioRecorder.h" compile="0" resource="0" file="Source/AudioEngine/AudioRecorder.h"/>
         <FILE id="PCA8lk" name="MasterProcessor.cpp" compile="1" resource="0"
               file="Source/AudioEngine/MasterProcessor.cpp"/>
         <FILE id="LydS8Y" name="MasterProcessor.h" compile="0" resource="0"

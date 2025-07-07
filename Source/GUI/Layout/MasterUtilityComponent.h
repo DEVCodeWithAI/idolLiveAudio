@@ -8,6 +8,9 @@
 #include "SoundboardComponent.h"
 #include "../../AudioEngine/AudioEngine.h"
 
+// <<< THÊM INCLUDE NÀY >>>
+#include "../../GUI/Components/RecorderComponent.h"
+
 class MasterPluginsWindow;
 
 class MasterUtilityComponent : public juce::Component,
@@ -43,6 +46,9 @@ private:
     MasterProcessor* masterProcessor = nullptr;
 
     std::unique_ptr<MasterPluginsWindow> masterPluginsWindow;
+
+    // <<< THÊM COMPONENT MỚI >>>
+    std::unique_ptr<RecorderComponent> recorderComponent;
 
     // Section 1: Soundboard
     std::unique_ptr<SoundboardComponent> soundboardComponent;
