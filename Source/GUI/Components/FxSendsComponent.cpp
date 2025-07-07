@@ -54,6 +54,7 @@ FxSendsComponent::FxSendsComponent(TrackComponent& owner) : ownerTrack(owner)
 
 FxSendsComponent::~FxSendsComponent()
 {
+    LanguageManager::getInstance().removeChangeListener(this);
 }
 
 void FxSendsComponent::paint(juce::Graphics& g)
