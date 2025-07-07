@@ -23,6 +23,7 @@ Lightweight, intuitive interface for managing plugins and soundboard during your
 ✅ Dedicated FX Chains for parallel processing (Reverb, Delay, etc.)  
 ✅ Integrated Player & Recorder for each track (Post-FX)  
 ✅ Multi-Track Project System for recording RAW, unprocessed audio  
+✅ Safety Lock to prevent accidental changes to core configurations  
 ✅ Soundboard with quick sound triggering  
 ✅ Simple, user-friendly interface  
 ✅ Developed with JUCE (C++20)  
@@ -62,6 +63,12 @@ This is the biggest new feature, enabling a full production workflow:
 - **Record Project (RAW)**: Simultaneously record the RAW, unprocessed input from both the Vocal and Music tracks. This captures your performance in its purest form, perfect for mixing and mastering later.
 - **Manage Projects**: All your recorded projects are saved neatly. The Project Manager lets you view, load, or delete them.
 - **Synchronized Playback**: Load a project, and both RAW tracks will play back in perfect sync. The seek bars are linked, allowing you to navigate your project as a single piece.
+
+### 4. Safety Lock System
+
+To prevent accidental changes during live performances, a new system-wide Safety Lock has been added.
+When enabled, it disables configuration controls such as plugin routing, I/O assignments, and critical UI elements — ensuring stability throughout a live session.
+This feature is especially useful for protecting presets or setups used by creators who are not familiar with audio engineering.
 
 ---
 
