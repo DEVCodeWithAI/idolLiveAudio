@@ -18,6 +18,7 @@ MasterUtilityComponent::MasterUtilityComponent(AudioEngine& engine)
     : audioEngine(engine)
 {
     LanguageManager::getInstance().addChangeListener(this);
+    AppState::getInstance().addChangeListener(this);
 
     // <<< KHỞI TẠO COMPONENT MỚI >>>
     recorderComponent = std::make_unique<RecorderComponent>(audioEngine);
@@ -82,11 +83,13 @@ MasterUtilityComponent::MasterUtilityComponent(AudioEngine& engine)
         };
 
     updateTexts();
+    updateLockState();
 }
 
 MasterUtilityComponent::~MasterUtilityComponent()
 {
     LanguageManager::getInstance().removeChangeListener(this);
+    AppState::getInstance().removeChangeListener(this);
 }
 
 void MasterUtilityComponent::paint(juce::Graphics& g)
@@ -186,6 +189,8 @@ void MasterUtilityComponent::changeListenerCallback(juce::ChangeBroadcaster* sou
 {
     if (source == &LanguageManager::getInstance())
         updateTexts();
+    else if (source == &AppState::getInstance()) // <<< THÊM LOGIC
+        updateLockState();
 }
 
 void MasterUtilityComponent::closeAllPluginWindows()
@@ -196,4 +201,18 @@ void MasterUtilityComponent::closeAllPluginWindows()
     {
         masterPluginsWindow.reset();
     }
+}
+
+void MasterUtilityComponent::updateLockState()
+{
+    const bool isLocked = AppState::getInstance().isSystemLocked();
+
+    masterPluginsButton.setEnabled(!isLocked);
+    quickKeySettingsButton.setEnabled(!isLocked);
+    masterVolumeSlider.setEnabled(!isLocked);
+
+    // Các thành phần biểu diễn vẫn hoạt động
+    recorderComponent->setEnabled(true);
+    soundboardComponent->setEnabled(true);
+    masterMuteButton.setEnabled(true);
 }

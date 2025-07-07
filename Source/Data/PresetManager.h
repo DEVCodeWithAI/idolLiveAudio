@@ -22,6 +22,9 @@ namespace Identifiers
     const juce::Identifier MusicFx2State("MusicFx2State");
     const juce::Identifier MusicFx3State("MusicFx3State");
     const juce::Identifier MusicFx4State("MusicFx4State");
+
+    const juce::Identifier lockState("lockState");
+    const juce::Identifier lockPasswordHash("lockPasswordHash");
 }
 
 class PresetManager : public juce::ChangeBroadcaster

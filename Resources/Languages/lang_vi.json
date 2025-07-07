@@ -177,5 +177,19 @@
         "delete": "Xóa",
         "deleteConfirmTitle": "Xác Nhận Xóa",
         "deleteConfirmMessage": "Bạn có chắc chắn muốn xóa vĩnh viễn project '{{projectName}}' và toàn bộ các file audio bên trong không?"
+    },
+	"lock": {
+        "unlockTitle": "Mở khóa Hệ thống",
+        "unlockMessage": "Nhập mật khẩu để mở khóa.",
+        "lockTitle": "Khóa Hệ thống",
+        "lockMessage": "Đặt mật khẩu 4 số để khóa.",
+        "passwordLabel": "Mật khẩu:",
+        "passwordLabel4Digits": "Mật khẩu (4 số):",
+        "unlockButton": "Mở khóa",
+        "lockButton": "Khóa",
+        "cancelButton": "Hủy",
+        "errorTitle": "Lỗi",
+        "incorrectPassword": "Mật khẩu không chính xác.",
+        "invalidPassword": "Mật khẩu phải là 4 chữ số."
     }
 }

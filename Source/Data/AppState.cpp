@@ -7,6 +7,7 @@
 #include "../GUI/Layout/PresetBarComponent.h"
 #include "../GUI/Layout/MenubarComponent.h"
 #include "juce_audio_devices/juce_audio_devices.h"
+#include <juce_cryptography/juce_cryptography.h>
 
 
 // Define identifiers for session state XML
@@ -208,4 +209,44 @@ void AppState::loadPostDeviceState(MainComponent& mainComponent)
             }
         }
     }
+}
+
+// --- TRIỂN KHAI CÁC HÀM KHÓA ĐÃ SỬA LỖI ---
+
+void AppState::setSystemLocked(bool shouldBeLocked, const juce::String& password)
+{
+    systemLocked = shouldBeLocked;
+    if (systemLocked && password.isNotEmpty())
+        lockPasswordHash = juce::MD5(password.toRawUTF8(), password.getNumBytesAsUTF8()).toHexString();
+    else if (!systemLocked)
+        lockPasswordHash.clear();
+
+    sendChangeMessage();
+}
+
+bool AppState::unlockSystem(const juce::String& passwordAttempt)
+{
+    if (juce::MD5(passwordAttempt.toRawUTF8(), passwordAttempt.getNumBytesAsUTF8()).toHexString() == lockPasswordHash)
+    {
+        setSystemLocked(false);
+        return true;
+    }
+    return false;
+}
+
+bool AppState::isSystemLocked() const
+{
+    return systemLocked.load();
+}
+
+juce::String AppState::getPasswordHash() const
+{
+    return lockPasswordHash;
+}
+
+void AppState::loadLockState(bool isLocked, const juce::String& passwordHash)
+{
+    systemLocked = isLocked;
+    lockPasswordHash = passwordHash;
+    sendChangeMessage();
 }

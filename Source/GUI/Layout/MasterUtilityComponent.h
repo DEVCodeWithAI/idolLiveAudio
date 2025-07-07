@@ -39,6 +39,7 @@ public:
 private:
     void updateTexts();
     void updateMuteButtonAppearance();
+    void updateLockState();
 
     AudioEngine& audioEngine;
 

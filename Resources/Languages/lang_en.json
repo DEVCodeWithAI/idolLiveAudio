@@ -177,6 +177,20 @@
         "delete": "Delete",
         "deleteConfirmTitle": "Confirm Deletion",
         "deleteConfirmMessage": "Are you sure you want to permanently delete the project '{{projectName}}' and all its audio files?"
+    },
+	"lock": {
+        "unlockTitle": "Unlock System",
+        "unlockMessage": "Enter password to unlock.",
+        "lockTitle": "Lock System",
+        "lockMessage": "Set a 4-digit password to lock.",
+        "passwordLabel": "Password:",
+        "passwordLabel4Digits": "Password (4 digits):",
+        "unlockButton": "Unlock",
+        "lockButton": "Lock",
+        "cancelButton": "Cancel",
+        "errorTitle": "Error",
+        "incorrectPassword": "Incorrect password.",
+        "invalidPassword": "Password must be 4 digits."
     }
 
 }

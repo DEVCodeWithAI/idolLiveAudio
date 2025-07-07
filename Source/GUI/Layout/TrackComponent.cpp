@@ -167,6 +167,7 @@ TrackComponent::TrackComponent(const juce::String& trackNameKey, const juce::Col
 {
     LanguageManager::getInstance().addChangeListener(this);
     getSharedPluginManager().addChangeListener(this);
+    AppState::getInstance().addChangeListener(this);
     pluginListBox.setModel(this);
     pluginListBox.setRowHeight(35);
     addAndMakeVisible(trackLabel);
@@ -186,6 +187,8 @@ TrackComponent::TrackComponent(const juce::String& trackNameKey, const juce::Col
             }
         };
     addAndMakeVisible(lockButton);
+    lockButton.setClickingTogglesState(true);
+    lockButton.onClick = [this] { handleLockButtonClicked(); };
     addAndMakeVisible(muteButton);
     addAndMakeVisible(volumeSlider);
     addAndMakeVisible(levelMeter);
@@ -234,6 +237,7 @@ TrackComponent::TrackComponent(const juce::String& trackNameKey, const juce::Col
         };
     updateTexts();
     updatePluginSelector();
+    updateLockState();
 }
 
 TrackComponent::~TrackComponent()
@@ -251,6 +255,8 @@ TrackComponent::~TrackComponent()
     openPluginWindows.clear();
     LanguageManager::getInstance().removeChangeListener(this);
     getSharedPluginManager().removeChangeListener(this);
+    AppState::getInstance().removeChangeListener(this);
+
     if (processor)
     {
         removeListenerFromAllPlugins();
@@ -414,6 +420,10 @@ void TrackComponent::changeListenerCallback(juce::ChangeBroadcaster* source)
         pluginListBox.updateContent();
         removeListenerFromAllPlugins();
         addListenerToAllPlugins();
+    }
+    else if (source == &AppState::getInstance())
+    {
+        updateLockState();
     }
 }
 
@@ -865,4 +875,107 @@ void TrackComponent::closeAllPluginWindows()
             window.deleteAndZero();
         }
     }
+}
+
+void TrackComponent::handleLockButtonClicked()
+{
+    auto& appState = AppState::getInstance();
+    auto& lang = LanguageManager::getInstance();
+
+    if (appState.isSystemLocked())
+    {
+        // Mở khóa
+        auto* alert = new juce::AlertWindow(lang.get("lock.unlockTitle"),
+            lang.get("lock.unlockMessage"),
+            juce::AlertWindow::QuestionIcon);
+
+        // <<< SỬA LỖI Ở ĐÂY: Thêm tham số 'true' để ẩn mật khẩu >>>
+        alert->addTextEditor("password", "", lang.get("lock.passwordLabel"), true);
+
+        alert->addButton(lang.get("lock.unlockButton"), 1, juce::KeyPress(juce::KeyPress::returnKey));
+        alert->addButton(lang.get("lock.cancelButton"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
+
+        alert->enterModalState(true, juce::ModalCallbackFunction::create(
+            [this, &appState, alert, &lang](int result)
+            {
+                if (result == 1)
+                {
+                    if (!appState.unlockSystem(alert->getTextEditorContents("password")))
+                    {
+                        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
+                            lang.get("lock.errorTitle"),
+                            lang.get("lock.incorrectPassword"));
+                        lockButton.setToggleState(true, juce::dontSendNotification);
+                    }
+                }
+                else
+                {
+                    lockButton.setToggleState(true, juce::dontSendNotification);
+                }
+            }), true);
+    }
+    else
+    {
+        // Khóa
+        auto* alert = new juce::AlertWindow(lang.get("lock.lockTitle"),
+            lang.get("lock.lockMessage"),
+            juce::AlertWindow::QuestionIcon);
+        alert->addTextEditor("password", "", lang.get("lock.passwordLabel4Digits"), true);
+        alert->addButton(lang.get("lock.lockButton"), 1, juce::KeyPress(juce::KeyPress::returnKey));
+        alert->addButton(lang.get("lock.cancelButton"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
+
+        alert->enterModalState(true, juce::ModalCallbackFunction::create(
+            [this, &appState, alert, &lang](int result)
+            {
+                if (result == 1)
+                {
+                    auto password = alert->getTextEditorContents("password");
+                    if (password.isNotEmpty() && password.length() == 4 && password.containsOnly("0123456789"))
+                    {
+                        appState.setSystemLocked(true, password);
+                    }
+                    else
+                    {
+                        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
+                            lang.get("lock.errorTitle"),
+                            lang.get("lock.invalidPassword"));
+                        lockButton.setToggleState(false, juce::dontSendNotification);
+                    }
+                }
+                else
+                {
+                    lockButton.setToggleState(false, juce::dontSendNotification);
+                }
+            }), true);
+    }
+}
+
+void TrackComponent::updateLockState()
+{
+    const bool isLocked = AppState::getInstance().isSystemLocked();
+
+    lockButton.setToggleState(isLocked, juce::dontSendNotification);
+
+    // <<< ĐÃ HARDCODE THEO YÊU CẦU >>>
+    if (isLocked)
+    {
+        lockButton.setButtonText("L");
+        lockButton.setTooltip("System is Locked. Click to unlock.");
+    }
+    else
+    {
+        lockButton.setButtonText("U");
+        lockButton.setTooltip("System is Unlocked. Click to lock.");
+    }
+
+    // Vô hiệu hóa các điều khiển nhạy cảm
+    inputChannelSelector.setEnabled(!isLocked);
+    volumeSlider.setEnabled(!isLocked);
+    pluginListBox.setEnabled(!isLocked);
+    addPluginSelector.setEnabled(!isLocked);
+    addButton.setEnabled(!isLocked);
+    fxSends->setEnabled(!isLocked);
+
+    // Mute vẫn luôn hoạt động
+    muteButton.setEnabled(true);
 }

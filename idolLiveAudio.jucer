@@ -4,12 +4,12 @@
               addUsingNamespaceToJuceHeader="1" jucerFormatVersion="1" cppLanguageStandard="20"
               companyName="DEVCodeWithAI" companyCopyright="GPLv3" companyWebsite="www.devcodewithai.com"
               companyEmail="dev.codewithai@gmail.com" userNotes="idolLiveAudio &#8211; Realtime Audio Plugin Host&#10;&#10;Developed with the assistance of AI (Gemini + ChatGPT)  &#10;Part of the DevCodeWithAI ecosystem: www.devcodewithai.com  &#10;&#10;Key Points:  &#10;- Supports Waves, Auto-Tune, VST3 plugins  &#10;- Created using JUCE framework (C++20)  &#10;- Open-source, GPLv3 licensed  &#10;- Real-world case of AI-assisted software development  &#10;- Designed to simplify professional audio processing for singers, streamers, and creators  &#10;&#10;This project demonstrates how AI collaboration can empower non-expert programmers to build usable, production-ready software across industries.&#10;&#10;For support, contributions, or technical discussion, visit:  &#10;www.devcodewithai.com  &#10;"
-              version="1.0.0">
+              version="1.1.0">
   <MAINGROUP id="B708Sa" name="idolLiveAudio">
     <GROUP id="{AD963046-D105-7E97-82F8-04E24F432A02}" name="Resources">
       <GROUP id="{08105253-0E21-EFD1-B951-19A48B0626BC}" name="Languages">
-        <FILE id="BURuYq" name="lang_en.json" compile="0" resource="1" file="Resources/Languages/lang_en.json"/>
-        <FILE id="ypIt8a" name="lang_vi.json" compile="0" resource="1" file="Resources/Languages/lang_vi.json"/>
+        <FILE id="WEtGB4" name="lang_en.json" compile="0" resource="1" file="Resources/Languages/lang_en.json"/>
+        <FILE id="Tp6IYx" name="lang_vi.json" compile="0" resource="1" file="Resources/Languages/lang_vi.json"/>
       </GROUP>
       <FILE id="etZReR" name="icon_128x128.png" compile="0" resource="1"
             file="Resources/icon_128x128.png"/>
@@ -190,6 +190,7 @@
     <MODULE id="juce_audio_processors" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
     <MODULE id="juce_audio_utils" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
     <MODULE id="juce_core" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_cryptography" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
     <MODULE id="juce_data_structures" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
     <MODULE id="juce_dsp" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
     <MODULE id="juce_events" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
@@ -218,6 +219,7 @@
         <MODULEPATH id="juce_audio_utils" path="C:/JUCE/modules"/>
         <MODULEPATH id="juce_audio_formats" path="C:/JUCE/modules"/>
         <MODULEPATH id="juce_dsp" path="C:/JUCE/modules"/>
+        <MODULEPATH id="juce_cryptography" path="C:/JUCE/modules"/>
       </MODULEPATHS>
     </VS2022>
   </EXPORTFORMATS>

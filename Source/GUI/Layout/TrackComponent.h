@@ -66,6 +66,10 @@ private:
     void addListenerToAllPlugins();
     void removeListenerFromAllPlugins();
 
+    // Lock UI
+    void handleLockButtonClicked();
+    void updateLockState();
+
     // --- Các biến thành viên ---
     ProcessorBase* processor = nullptr;
     AudioEngine* audioEngine = nullptr;
