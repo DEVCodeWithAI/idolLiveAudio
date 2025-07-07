@@ -63,7 +63,6 @@ MasterUtilityComponent::MasterUtilityComponent(AudioEngine& engine)
             {
                 masterProcessor->setMuted(masterMuteButton.getToggleState());
                 updateMuteButtonAppearance();
-                AppState::getInstance().setPresetDirty(true);
             }
         };
 
@@ -80,7 +79,6 @@ MasterUtilityComponent::MasterUtilityComponent(AudioEngine& engine)
         {
             if (masterProcessor != nullptr)
                 masterProcessor->setGain(static_cast<float>(masterVolumeSlider.getValue()));
-            AppState::getInstance().setPresetDirty(true);
         };
 
     updateTexts();

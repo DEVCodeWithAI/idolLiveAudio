@@ -221,7 +221,6 @@ TrackComponent::TrackComponent(const juce::String& trackNameKey, const juce::Col
         {
             if (processor != nullptr)
                 processor->setGain(static_cast<float>(volumeSlider.getValue()));
-            AppState::getInstance().setPresetDirty(true);
         };
     muteButton.setClickingTogglesState(true);
     muteButton.setColour(juce::TextButton::buttonOnColourId, juce::Colours::red.withAlpha(0.8f));
@@ -231,7 +230,6 @@ TrackComponent::TrackComponent(const juce::String& trackNameKey, const juce::Col
             {
                 processor->setMuted(muteButton.getToggleState());
                 updateMuteButtonState();
-                AppState::getInstance().setPresetDirty(true);
             }
         };
     updateTexts();
