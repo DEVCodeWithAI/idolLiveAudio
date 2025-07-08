@@ -151,6 +151,24 @@ public:
             powerButton.setButtonText(isBypassed ? "OFF" : "ON");
         }
     }
+
+    void setLocked(bool shouldBeLocked, bool isSpecialSlot)
+    {
+        if (isSpecialSlot && shouldBeLocked)
+        {
+            setEnabled(true);
+            openButton.setEnabled(true);
+
+            powerButton.setEnabled(false);
+            removeButton.setEnabled(false);
+            moveUpButton.setEnabled(false);
+            moveDownButton.setEnabled(false);
+        }
+        else
+        {
+            setEnabled(!shouldBeLocked);
+        }
+    }
 private:
     TrackComponent& owner;
     int row;
@@ -885,14 +903,24 @@ void TrackComponent::updateLockState()
         lockButton.setTooltip("System is Unlocked. Click to lock.");
     }
 
-    // Thay thế 'inputChannelSelector' bằng 'channelSelector'
     if (channelSelector)
         channelSelector->setEnabled(!isLocked);
 
     volumeSlider.setEnabled(!isLocked);
-    pluginListBox.setEnabled(!isLocked);
     addPluginSelector.setEnabled(!isLocked);
     addButton.setEnabled(!isLocked);
     fxSends->setEnabled(!isLocked);
     muteButton.setEnabled(true);
+
+    pluginListBox.setEnabled(true);
+
+    for (int i = 0; i < getNumRows(); ++i)
+    {
+        if (auto* item = dynamic_cast<PluginItemComponent*>(pluginListBox.getComponentForRowNumber(i)))
+        {
+            const bool isSpecialSlot = (channelType == ChannelType::Music && i == 0);
+
+            item->setLocked(isLocked, isSpecialSlot);
+        }
+    }
 }
