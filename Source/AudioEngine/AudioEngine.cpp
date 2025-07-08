@@ -105,11 +105,6 @@ void AudioEngine::audioDeviceStopped()
     musicInputRightChannel.store(-1);
     selectedOutputLeftChannel.store(-1);
     selectedOutputRightChannel.store(-1);
-
-    if (vocalTrackComponent != nullptr)
-        vocalTrackComponent->populateInputChannels({}, {});
-    if (musicTrackComponent != nullptr)
-        musicTrackComponent->populateInputChannels({}, {});
 }
 
 // <<< MODIFIED: Full audio callback logic with send/return levels >>>
@@ -129,7 +124,6 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChan
     for (auto& buffer : vocalFxReturnBuffers) buffer.clear();
     for (auto& buffer : musicFxReturnBuffers) buffer.clear();
 
-    // Tạo và xóa các buffer tạm cho player của từng track
     vocalPlayerBuffer.setSize(2, numSamples);
     musicPlayerBuffer.setSize(2, numSamples);
     vocalPlayerBuffer.clear();
@@ -148,21 +142,14 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChan
     const int currentVocalIn = vocalInputChannel.load();
     if (juce::isPositiveAndBelow(currentVocalIn, numInputChannels))
     {
-        // Lấy tín hiệu RAW từ input
         juce::AudioBuffer<float> rawInput(const_cast<float**>(inputChannelData) + currentVocalIn, 1, numSamples);
         vocalBuffer.copyFrom(0, 0, rawInput, 0, 0, numSamples);
         vocalBuffer.copyFrom(1, 0, rawInput, 0, 0, numSamples);
-
-        // Ghi âm RAW ngay lập tức
         rawVocalRecorder->processBlock(vocalBuffer, currentSampleRate);
     }
-    // Cộng tín hiệu từ Vocal Player vào buffer
     vocalBuffer.addFrom(0, 0, vocalPlayerBuffer, 0, 0, numSamples);
     vocalBuffer.addFrom(1, 0, vocalPlayerBuffer, 1, 0, numSamples);
-
-    // Xử lý qua plugin của track
     vocalProcessor.process(vocalBuffer);
-    // Ghi âm tín hiệu đã qua xử lý (Post-FX)
     vocalTrackRecorder->processBlock(vocalBuffer, currentSampleRate);
 
 
@@ -175,14 +162,10 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChan
         juce::AudioBuffer<float> rawInput(const_cast<float**>(inputChannelData) + currentMusicLeftIn, 2, numSamples);
         musicStereoBuffer.copyFrom(0, 0, rawInput, 0, 0, numSamples);
         musicStereoBuffer.copyFrom(1, 0, rawInput, 1, 0, numSamples);
-
         rawMusicRecorder->processBlock(musicStereoBuffer, currentSampleRate);
     }
-    // Cộng tín hiệu từ Music Player vào buffer
     musicStereoBuffer.addFrom(0, 0, musicPlayerBuffer, 0, 0, numSamples);
     musicStereoBuffer.addFrom(1, 0, musicPlayerBuffer, 1, 0, numSamples);
-
-    // Xử lý qua plugin của track
     musicProcessor.process(musicStereoBuffer);
     musicTrackRecorder->processBlock(musicStereoBuffer, currentSampleRate);
 
@@ -216,10 +199,14 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChan
 
 
     // --- 7. Tổng hợp tất cả vào Kênh Master ---
-    mixBuffer.addFrom(0, 0, vocalBuffer, 0, 0, numSamples);
-    mixBuffer.addFrom(1, 0, vocalBuffer, 1, 0, numSamples);
+    mixBuffer.clear();
+
+    mixBuffer.copyFrom(0, 0, vocalBuffer, 0, 0, numSamples);
+    mixBuffer.copyFrom(1, 0, vocalBuffer, 1, 0, numSamples);
+
     mixBuffer.addFrom(0, 0, musicStereoBuffer, 0, 0, numSamples);
     mixBuffer.addFrom(1, 0, musicStereoBuffer, 1, 0, numSamples);
+
     mixBuffer.addFrom(0, 0, soundboardBuffer, 0, 0, numSamples);
     mixBuffer.addFrom(1, 0, soundboardBuffer, 1, 0, numSamples);
 
@@ -227,11 +214,13 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChan
     {
         mixBuffer.addFrom(0, 0, vocalFxReturnBuffers[i], 0, 0, numSamples);
         mixBuffer.addFrom(1, 0, vocalFxReturnBuffers[i], 1, 0, numSamples);
+    }
+    for (int i = 0; i < 4; ++i)
+    {
         mixBuffer.addFrom(0, 0, musicFxReturnBuffers[i], 0, 0, numSamples);
         mixBuffer.addFrom(1, 0, musicFxReturnBuffers[i], 1, 0, numSamples);
     }
 
-    // Xử lý qua plugin Master và ghi âm kênh Master
     masterProcessor.process(mixBuffer);
     audioRecorder->processBlock(mixBuffer, currentSampleRate);
 
@@ -416,8 +405,9 @@ void AudioEngine::updateActiveInputChannels(juce::AudioDeviceManager& manager)
             activeMonoIndices.add(i);
         }
     }
-    if (vocalTrackComponent != nullptr)
-        vocalTrackComponent->populateInputChannels(activeMonoNames, activeMonoIndices);
+    // XÓA DÒNG NÀY
+    // if (vocalTrackComponent != nullptr)
+    //     vocalTrackComponent->populateInputChannels(activeMonoNames, activeMonoIndices);
 
     juce::StringArray activeStereoNames;
     juce::Array<int> activeStereoStartIndices;
@@ -429,8 +419,9 @@ void AudioEngine::updateActiveInputChannels(juce::AudioDeviceManager& manager)
             activeStereoStartIndices.add(i);
         }
     }
-    if (musicTrackComponent != nullptr)
-        musicTrackComponent->populateInputChannels(activeStereoNames, activeStereoStartIndices);
+    // VÀ XÓA DÒNG NÀY
+    // if (musicTrackComponent != nullptr)
+    //     musicTrackComponent->populateInputChannels(activeStereoNames, activeStereoStartIndices);
 }
 
 
@@ -639,14 +630,23 @@ void AudioEngine::playLoadedProject()
 
 void AudioEngine::stopLoadedProject()
 {
-    // Dừng và reset vị trí các transport source như cũ
+    // Dừng phát nhạc
     vocalTrackSource.stop();
     musicTrackSource.stop();
+
+    // <<< THÊM VÀO: Giải phóng hoàn toàn các source để đóng file handles >>>
+    vocalTrackSource.setSource(nullptr);
+    musicTrackSource.setSource(nullptr);
+    vocalTrackReader.reset();
+    musicTrackReader.reset();
+
+    // Reset vị trí cho chắc chắn
     vocalTrackSource.setPosition(0);
     musicTrackSource.setPosition(0);
 
     isProjectPlaybackMode = false;
 
+    // Xóa trạng thái project
     projectState.setProperty(ProjectStateIDs::name, {}, nullptr);
     projectState.setProperty(ProjectStateIDs::isPlaying, false, nullptr);
 }

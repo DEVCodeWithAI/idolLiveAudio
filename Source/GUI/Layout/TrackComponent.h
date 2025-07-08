@@ -7,9 +7,11 @@
 #include "../Windows/FXChainWindow.h"
 #include "../../GUI/Components/TrackPlayerComponent.h"
 #include "../../GUI/Components/FxSendsComponent.h"
+#include "../../GUI/Components/ChannelSelectorComponent.h"
 
-class AudioEngine; // Forward declaration
+class AudioEngine;
 
+// <<< SỬA: Thêm lại juce::ComboBox::Listener >>>
 class TrackComponent : public juce::Component,
     public juce::ChangeListener,
     public juce::ListBoxModel,
@@ -24,6 +26,7 @@ public:
     void paint(juce::Graphics& g) override;
     void resized() override;
     void changeListenerCallback(juce::ChangeBroadcaster* source) override;
+    // <<< SỬA: Thêm lại hàm comboBoxChanged >>>
     void comboBoxChanged(juce::ComboBox* comboBoxThatHasChanged) override;
     void audioProcessorParameterChanged(juce::AudioProcessor* changedProcessor, int parameterIndex, float newValue) override;
     void audioProcessorChanged(juce::AudioProcessor* changedProcessor, const ChangeDetails& details) override;
@@ -31,9 +34,9 @@ public:
     // --- Getters và Setters ---
     void setProcessor(ProcessorBase* proc);
     LevelMeter& getLevelMeter();
-    void setAudioEngine(AudioEngine* engine);
-    void populateInputChannels(const juce::StringArray& channelNames, const juce::Array<int>& channelIndices);
-    void setSelectedInputChannelByName(const juce::String& channelName);
+    // <<< SỬA: Thay đổi khai báo hàm setAudioEngine >>>
+    void setAudioEngine(AudioEngine* engine, juce::AudioDeviceManager& manager);
+    ChannelSelectorComponent* getChannelSelector() { return channelSelector.get(); }
 
     // --- Quản lý Plugin UI ---
     void togglePluginBypass(int row);
@@ -48,8 +51,7 @@ public:
     void toggleFxMute(int index, bool shouldBeMuted);
 
 private:
-    // --- Các lớp con và khai báo private ---
-    friend class FxSendsComponent; // Cho phép FxSendsComponent truy cập thành viên private nếu cần
+    friend class FxSendsComponent;
     class PluginItemComponent;
 
     // --- Triển khai ListBoxModel ---
@@ -65,8 +67,6 @@ private:
     void updateMuteButtonState();
     void addListenerToAllPlugins();
     void removeListenerFromAllPlugins();
-
-    // Lock UI
     void handleLockButtonClicked();
     void updateLockState();
 
@@ -74,7 +74,6 @@ private:
     ProcessorBase* processor = nullptr;
     AudioEngine* audioEngine = nullptr;
     ChannelType channelType;
-    juce::Array<int> availableChannelIndices;
 
     juce::OwnedArray<juce::DocumentWindow> openPluginWindows;
     std::array<juce::Component::SafePointer<FXChainWindow>, 4> fxWindows;
@@ -83,8 +82,9 @@ private:
     juce::String nameKey;
     juce::Colour colour;
     juce::Label trackLabel;
-    juce::Label inputChannelLabel;
-    juce::ComboBox inputChannelSelector;
+
+    std::unique_ptr<ChannelSelectorComponent> channelSelector;
+
     juce::TextButton lockButton;
     juce::TextButton muteButton;
     juce::Slider volumeSlider;

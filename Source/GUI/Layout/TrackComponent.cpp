@@ -168,37 +168,29 @@ TrackComponent::TrackComponent(const juce::String& trackNameKey, const juce::Col
     LanguageManager::getInstance().addChangeListener(this);
     getSharedPluginManager().addChangeListener(this);
     AppState::getInstance().addChangeListener(this);
+
+    // Logic cho ListBox plugin không đổi
     pluginListBox.setModel(this);
     pluginListBox.setRowHeight(35);
+
     addAndMakeVisible(trackLabel);
-    addAndMakeVisible(inputChannelLabel);
-    addAndMakeVisible(inputChannelSelector);
-    inputChannelSelector.onChange = [this]
-        {
-            if (audioEngine == nullptr) return;
-            const int selectedId = inputChannelSelector.getSelectedId();
-            if (selectedId > 0 && selectedId <= availableChannelIndices.size())
-            {
-                const int selectedChannelIndex = availableChannelIndices[selectedId - 1];
-                if (channelType == ChannelType::Vocal)
-                    audioEngine->setVocalInputChannel(selectedChannelIndex);
-                else
-                    audioEngine->setMusicInputChannel(selectedChannelIndex);
-            }
-        };
+
+    // <<< XÓA: Khởi tạo các control input cũ >>>
+
     addAndMakeVisible(lockButton);
     lockButton.setClickingTogglesState(true);
     lockButton.onClick = [this] { handleLockButtonClicked(); };
     addAndMakeVisible(muteButton);
     addAndMakeVisible(volumeSlider);
     addAndMakeVisible(levelMeter);
-    
+
     fxSends = std::make_unique<FxSendsComponent>(*this);
     addAndMakeVisible(*fxSends);
 
     addAndMakeVisible(pluginListLabel);
     addAndMakeVisible(pluginListBox);
 
+    // Logic cho ComboBox add plugin không đổi
     addAndMakeVisible(addPluginSelector);
     addPluginSelector.setEditableText(true);
     addPluginSelector.addListener(this);
@@ -242,17 +234,8 @@ TrackComponent::TrackComponent(const juce::String& trackNameKey, const juce::Col
 
 TrackComponent::~TrackComponent()
 {
-    // Explicitly destroy any open FX chain windows owned by this component.
-    // This ensures their contents (including plugin editors) are destroyed
-    // in the correct order before the AudioEngine is torn down.
-    for (int i = 0; i < fxWindows.size(); ++i)
-    {
-        if (fxWindows[i] != nullptr)
-            fxWindows[i]->setVisible(false);
-        fxWindows[i] = nullptr;
-    }
+    closeAllPluginWindows();
 
-    openPluginWindows.clear();
     LanguageManager::getInstance().removeChangeListener(this);
     getSharedPluginManager().removeChangeListener(this);
     AppState::getInstance().removeChangeListener(this);
@@ -295,22 +278,19 @@ void TrackComponent::resized()
     const int padding = 10;
     bounds.reduce(padding, padding);
 
-    // --- Định nghĩa chiều cao ---
     const int headerHeight = 40;
     const int topControlsHeight = 170;
     const int playerHeight = 80;
 
-    // --- Cắt các vùng chính ---
     auto headerArea = bounds.removeFromTop(headerHeight);
     bounds.removeFromTop(padding);
     auto topControlsArea = bounds.removeFromTop(topControlsHeight);
     bounds.removeFromTop(padding);
     auto bottomArea = bounds;
 
-    // --- Layout ---
     trackLabel.setBounds(headerArea);
 
-    // 1. Layout cho vùng điều khiển trên cùng (Input và FX)
+    // 1. Layout cho vùng điều khiển trên cùng
     {
         auto area = topControlsArea.reduced(padding, 0);
 
@@ -324,10 +304,10 @@ void TrackComponent::resized()
 
         const int rowHeight = 30;
 
+        // <<< THAY THẾ CONTROL CŨ BẰNG COMPONENT MỚI >>>
         auto inputLine1 = inputArea.removeFromTop(rowHeight);
-        inputChannelLabel.setBounds(inputLine1.removeFromLeft(80));
-        inputLine1.removeFromLeft(5);
-        inputChannelSelector.setBounds(inputLine1);
+        if (channelSelector)
+            channelSelector->setBounds(inputLine1);
 
         inputArea.removeFromTop(5);
 
@@ -338,18 +318,18 @@ void TrackComponent::resized()
         inputLine2.removeFromLeft(padding);
         volumeSlider.setBounds(inputLine2.reduced(0, 5));
 
-        // Phần còn lại của inputArea sẽ dành cho LevelMeter
         inputArea.removeFromTop(8);
         levelMeter.setBounds(inputArea);
     }
 
-    // 2. Layout cho vùng dưới cùng (Plugins và Player)
+    // 2. Layout cho vùng dưới cùng (không thay đổi nhiều)
     {
         auto playerArea = bottomArea.removeFromBottom(playerHeight);
         bottomArea.removeFromBottom(padding);
         auto pluginArea = bottomArea;
 
-        trackPlayer->setBounds(playerArea);
+        if (trackPlayer)
+            trackPlayer->setBounds(playerArea);
 
         auto pluginBounds = pluginArea;
         pluginListLabel.setBounds(pluginBounds.removeFromTop(30));
@@ -407,6 +387,7 @@ void TrackComponent::toggleFxMute(int index, bool shouldBeMuted)
 
 void TrackComponent::changeListenerCallback(juce::ChangeBroadcaster* source)
 {
+    // <<< LOGIC CŨ ĐƯỢC DỌN DẸP >>>
     if (source == &LanguageManager::getInstance())
     {
         updateTexts();
@@ -592,129 +573,66 @@ void TrackComponent::showPluginEditor(int row)
 
 LevelMeter& TrackComponent::getLevelMeter() { return levelMeter; }
 
-void TrackComponent::setAudioEngine(AudioEngine* engine)
+void TrackComponent::setAudioEngine(AudioEngine* engine, juce::AudioDeviceManager& manager)
 {
     audioEngine = engine;
+    if (audioEngine == nullptr) return;
 
-    // Khởi tạo trackPlayer ở đây, khi đã chắc chắn có AudioEngine
-    if (audioEngine && trackPlayer == nullptr)
+    if (trackPlayer == nullptr)
     {
         TrackPlayerComponent::PlayerType playerType = (channelType == ChannelType::Vocal) ?
             TrackPlayerComponent::PlayerType::Vocal :
             TrackPlayerComponent::PlayerType::Music;
         trackPlayer = std::make_unique<TrackPlayerComponent>(playerType, *audioEngine);
         addAndMakeVisible(*trackPlayer);
-        resized(); // Gọi lại resized để đặt vị trí cho component mới
     }
-}
 
-void TrackComponent::populateInputChannels(const juce::StringArray& channelNames, const juce::Array<int>& channelIndices)
-{
-    // <<< FIX STARTS HERE >>>
-
-    // 1. Get the "ground truth" - what channel name is the audio engine currently using?
-    juce::String currentChannelName;
-    if (audioEngine != nullptr)
+    if (channelSelector == nullptr)
     {
-        if (channelType == ChannelType::Vocal)
-            currentChannelName = audioEngine->getVocalInputChannelName();
-        else
-            currentChannelName = audioEngine->getMusicInputChannelName();
+        auto type = (channelType == ChannelType::Vocal)
+            ? ChannelSelectorComponent::ChannelType::AudioInputMono
+            : ChannelSelectorComponent::ChannelType::AudioInputStereo;
+
+        // Truyền vào 'manager' thay vì 'audioEngine->getAudioDeviceManager()'
+        channelSelector = std::make_unique<ChannelSelectorComponent>(manager, *audioEngine, type, "tracks.input");
+        addAndMakeVisible(*channelSelector);
+
+        channelSelector->onSelectionChange = [this](int newChannelIndex)
+            {
+                if (audioEngine)
+                {
+                    if (channelType == ChannelType::Vocal)
+                        audioEngine->setVocalInputChannel(newChannelIndex);
+                    else
+                        audioEngine->setMusicInputChannel(newChannelIndex);
+                }
+            };
     }
 
-    // 2. Temporarily disable the onChange callback to prevent it from firing while we rebuild the list.
-    juce::ScopedValueSetter<std::function<void()>> svs(inputChannelSelector.onChange, nullptr);
-
-    inputChannelSelector.clear(juce::dontSendNotification);
-    availableChannelIndices = channelIndices;
-
-    int newIdToSelect = -1;
-
-    // 3. Repopulate the list and try to find an item that matches the engine's current channel name.
-    for (int i = 0; i < channelNames.size(); ++i)
-    {
-        const int itemId = i + 1;
-        inputChannelSelector.addItem(channelNames[i], itemId);
-        if (channelNames[i].isNotEmpty() && channelNames[i] == currentChannelName)
-        {
-            newIdToSelect = itemId; // Found a match!
-        }
-    }
-
-    // 4. Decide which item to select in the UI.
-    if (newIdToSelect != -1)
-    {
-        // If we found a match, restore the selection.
-        inputChannelSelector.setSelectedId(newIdToSelect, juce::dontSendNotification);
-    }
-    else if (!channelNames.isEmpty())
-    {
-        // Otherwise, if the list is not empty, default to the first item.
-        inputChannelSelector.setSelectedId(1, juce::dontSendNotification);
-    }
-
-    // 5. Now that the UI is correct, directly call the original onChange lambda
-    //    to ensure the AudioEngine is synchronized with the final selection.
-    //    This is safer than relying on notifications.
-    if (inputChannelSelector.onChange != nullptr)
-    {
-        inputChannelSelector.onChange();
-    }
-
-    // <<< FIX ENDS HERE >>>
-}
-
-void TrackComponent::setSelectedInputChannelByName(const juce::String& channelName)
-{
-    for (int i = 1; i <= inputChannelSelector.getNumItems(); ++i)
-    {
-        if (inputChannelSelector.getItemText(i - 1) == channelName)
-        {
-            inputChannelSelector.setSelectedId(i, juce::dontSendNotification);
-            return;
-        }
-    }
+    resized();
 }
 
 void TrackComponent::updateTexts()
 {
-    // 1. Lấy thực thể của LanguageManager
     auto& lang = LanguageManager::getInstance();
-
-    // 2. Cập nhật văn bản cho các component con của TrackComponent
     trackLabel.setText(lang.get(nameKey), juce::dontSendNotification);
-    inputChannelLabel.setText(lang.get("tracks.input"), juce::dontSendNotification);
-    inputChannelSelector.setTextWhenNothingSelected(lang.get("tracks.pleaseSelectDevice"));
-    
     pluginListLabel.setText(lang.get("tracks.activePlugins"), juce::dontSendNotification);
     addButton.setButtonText(lang.get("tracks.add"));
     addPluginSelector.setTextWhenNothingSelected(lang.get("tracks.addPluginPlaceholder"));
-    
-    // Cập nhật trạng thái cho nút Mute chính của track
     updateMuteButtonState();
-
-    // 3. Cập nhật trạng thái cho FxSendsComponent (component con)
-    // Kiểm tra xem audioEngine đã được liên kết chưa
     if (audioEngine)
     {
-        // Lặp qua 4 bộ xử lý FX
         for (int i = 0; i < 4; ++i)
         {
-            // Lấy con trỏ đến bộ xử lý FX tương ứng
             ProcessorBase* fxProcessor = (channelType == ChannelType::Vocal)
-                                       ? audioEngine->getFxProcessorForVocal(i)
-                                       : audioEngine->getFxProcessorForMusic(i);
-            
-            // Nếu bộ xử lý tồn tại, lấy trạng thái Mute của nó
+                ? audioEngine->getFxProcessorForVocal(i)
+                : audioEngine->getFxProcessorForMusic(i);
             if (fxProcessor)
             {
-                // Gọi hàm của FxSendsComponent để nó tự cập nhật trạng thái nút Mute của mình
                 fxSends->updateMuteButtonState(i, fxProcessor->isMuted());
             }
         }
     }
-    
-    // 4. Yêu cầu vẽ lại toàn bộ component để hiển thị thay đổi
     repaint();
 }
 
@@ -868,11 +786,11 @@ void TrackComponent::closeAllPluginWindows()
 {
     openPluginWindows.clear();
 
-    for (auto& window : fxWindows)
+    for (auto& fxWindowPtr : fxWindows)
     {
-        if (window != nullptr)
+        if (auto* window = fxWindowPtr.getComponent())
         {
-            window.deleteAndZero();
+            delete window;
         }
     }
 }
@@ -956,7 +874,6 @@ void TrackComponent::updateLockState()
 
     lockButton.setToggleState(isLocked, juce::dontSendNotification);
 
-    // <<< ĐÃ HARDCODE THEO YÊU CẦU >>>
     if (isLocked)
     {
         lockButton.setButtonText("L");
@@ -968,14 +885,14 @@ void TrackComponent::updateLockState()
         lockButton.setTooltip("System is Unlocked. Click to lock.");
     }
 
-    // Vô hiệu hóa các điều khiển nhạy cảm
-    inputChannelSelector.setEnabled(!isLocked);
+    // Thay thế 'inputChannelSelector' bằng 'channelSelector'
+    if (channelSelector)
+        channelSelector->setEnabled(!isLocked);
+
     volumeSlider.setEnabled(!isLocked);
     pluginListBox.setEnabled(!isLocked);
     addPluginSelector.setEnabled(!isLocked);
     addButton.setEnabled(!isLocked);
     fxSends->setEnabled(!isLocked);
-
-    // Mute vẫn luôn hoạt động
     muteButton.setEnabled(true);
 }

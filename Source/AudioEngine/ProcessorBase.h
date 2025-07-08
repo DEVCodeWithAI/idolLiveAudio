@@ -52,7 +52,7 @@ private:
     std::unordered_set<int> pluginBypassState;
     juce::AudioBuffer<float> tempBuffer;
 
-    std::atomic<float> sendLevel{ 1.0f };
+    std::atomic<float> sendLevel{ 0.0f };
     std::atomic<float> returnLevel{ 1.0f };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ProcessorBase)

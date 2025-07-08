@@ -49,7 +49,10 @@ ProjectManagerComponent::ProjectManagerComponent(AudioEngine& engine) : audioEng
 
 ProjectManagerComponent::~ProjectManagerComponent()
 {
-    projectListWindow.reset();
+    if (projectListWindow != nullptr)
+    {
+        delete projectListWindow.getComponent();
+    }
     LanguageManager::getInstance().removeChangeListener(this);
     audioEngine.getProjectState().removeListener(this);
 }
@@ -198,12 +201,14 @@ void ProjectManagerComponent::manageProjects()
 {
     if (projectListWindow == nullptr)
     {
-        projectListWindow = std::make_unique<ProjectListWindow>("Projects", [this](const juce::File& projectJsonFile) {
+        auto* window = new ProjectListWindow("Projects", audioEngine, [this](const juce::File& projectJsonFile) {
             audioEngine.loadProject(projectJsonFile);
             });
+        projectListWindow = window;
+        window->setVisible(true);
     }
-
-    projectListWindow->refreshList();
-    projectListWindow->setVisible(true);
-    projectListWindow->toFront(true);
+    else
+    {
+        projectListWindow->toFront(true);
+    }
 }

@@ -161,16 +161,25 @@ void AppState::loadPostDeviceState(MainComponent& mainComponent)
             auto musicInputName = routingStateXml->getStringAttribute(SessionIds::MUSIC_INPUT);
             auto appOutputName = routingStateXml->getStringAttribute(SessionIds::APP_OUTPUT);
 
+            // Cập nhật AudioEngine (không đổi)
             mainComponent.getAudioEngine().setVocalInputChannelByName(vocalInputName);
             mainComponent.getAudioEngine().setMusicInputChannelByName(musicInputName);
             mainComponent.getAudioEngine().setSelectedOutputChannelsByName(appOutputName);
 
-            mainComponent.getVocalTrack().setSelectedInputChannelByName(vocalInputName);
-            mainComponent.getMusicTrack().setSelectedInputChannelByName(musicInputName);
+            // Cập nhật giao diện thông qua các component mới
+            if (auto* vocalSelector = mainComponent.getVocalTrack().getChannelSelector())
+                vocalSelector->setSelectedChannelByName(vocalInputName);
+
+            if (auto* musicSelector = mainComponent.getMusicTrack().getChannelSelector())
+                musicSelector->setSelectedChannelByName(musicInputName);
+
+            // <<< SỬA: Cách cập nhật MenubarComponent >>>
             if (auto* menubar = mainComponent.getMenubarComponent())
-                menubar->setSelectedOutputChannelPairByName(appOutputName);
+                if (auto* outputSelector = menubar->getOutputSelector())
+                    outputSelector->setSelectedChannelByName(appOutputName);
         }
 
+        // ... (phần còn lại của hàm không đổi) ...
         auto* presetStateXml = xml->getChildByName(SessionIds::ACTIVE_PRESET);
         if (presetStateXml != nullptr)
         {

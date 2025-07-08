@@ -1,7 +1,8 @@
 #include "ProjectListWindow.h"
 #include "../../Components/Helpers.h"
+#include "../../AudioEngine/AudioEngine.h" // <<< THÊM: Include AudioEngine
 
-// ================== Component cho một hàng trong danh sách ==================
+// ... (Lớp ProjectItemComponent không thay đổi) ...
 class ProjectItemComponent : public juce::Component
 {
 public:
@@ -9,11 +10,9 @@ public:
     {
         auto& lang = LanguageManager::getInstance();
         addAndMakeVisible(nameLabel);
-
         addAndMakeVisible(playButton);
         playButton.setButtonText(lang.get("projectListWindow.play"));
         playButton.addListener(owner);
-
         addAndMakeVisible(deleteButton);
         deleteButton.setButtonText(lang.get("projectListWindow.delete"));
         deleteButton.setColour(juce::TextButton::buttonOnColourId, juce::Colours::darkred.withAlpha(0.8f));
@@ -40,15 +39,18 @@ private:
     juce::TextButton playButton, deleteButton;
 };
 
-// ================== Nội dung chính của cửa sổ ==================
+
+// <<< SỬA: Cập nhật lớp ProjectListContentComponent >>>
 class ProjectListContentComponent : public juce::Component,
     public juce::ListBoxModel,
     public juce::Button::Listener
 {
 public:
     ProjectListContentComponent(const juce::String& subDir,
+        AudioEngine& engine, // Nhận AudioEngine
         std::function<void(const juce::File&)> onProjectChosenCallback)
-        : onProjectChosen(onProjectChosenCallback)
+        : audioEngine(engine), // Lưu trữ AudioEngine
+        onProjectChosen(onProjectChosenCallback)
     {
         projectDir = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory)
             .getChildFile(ProjectInfo::companyName)
@@ -59,15 +61,11 @@ public:
         addAndMakeVisible(listBox);
         listBox.setModel(this);
         listBox.setRowHeight(40);
-
-        // Tạm thời không gọi findProjects() ở đây nữa
     }
 
-    // <<< SỬA: Chuyển logic tìm file vào đây >>>
     void resized() override
     {
         listBox.setBounds(getLocalBounds().reduced(10));
-        // Chỉ tìm project một lần khi component được hiển thị lần đầu
         if (!initialScanDone)
         {
             findProjects();
@@ -103,6 +101,7 @@ public:
     {
         auto& lang = LanguageManager::getInstance();
         auto id = button->getComponentID();
+
         if (id.startsWith("play_"))
         {
             auto fullPath = id.fromFirstOccurrenceOf("play_", false, false);
@@ -118,15 +117,24 @@ public:
             auto fullPath = id.fromFirstOccurrenceOf("delete_", false, false);
             juce::File projectFile(fullPath);
             auto projectFolder = projectFile.getParentDirectory();
+            auto projectName = projectFolder.getFileName();
 
             if (projectFolder.isDirectory())
             {
                 juce::AlertWindow::showOkCancelBox(juce::AlertWindow::WarningIcon, lang.get("projectListWindow.deleteConfirmTitle"),
-                    lang.get("projectListWindow.deleteConfirmMessage").replace("{{projectName}}", projectFolder.getFileName()),
+                    lang.get("projectListWindow.deleteConfirmMessage").replace("{{projectName}}", projectName),
                     lang.get("presetbar.yes"), lang.get("presetbar.no"), nullptr,
-                    juce::ModalCallbackFunction::create([this, projectFolder](int result) {
-                        if (result == 1)
+                    juce::ModalCallbackFunction::create([this, projectFolder, projectName](int result) {
+                        if (result == 1) // User clicked Yes
                         {
+                            // Kiểm tra nếu project đang xóa là project đang chạy
+                            if (audioEngine.getProjectState().getProperty("name").toString() == projectName)
+                            {
+                                // Dừng và giải phóng tài nguyên TRƯỚC KHI xóa
+                                audioEngine.stopLoadedProject();
+                            }
+
+                            // Bây giờ mới xóa file một cách an toàn
                             if (projectFolder.deleteRecursively())
                                 findProjects();
                         }
@@ -136,15 +144,18 @@ public:
     }
 
 private:
+    AudioEngine& audioEngine; // Biến thành viên để giữ AudioEngine
     juce::File projectDir;
     juce::ListBox listBox;
     juce::Array<juce::File> projectJsonFiles;
     std::function<void(const juce::File&)> onProjectChosen;
-    bool initialScanDone = false; // Thêm biến cờ để chỉ quét 1 lần
+    bool initialScanDone = false;
 };
 
-// ================== Triển khai Window ==================
+
+// <<< SỬA: Cập nhật hàm khởi tạo của Window >>>
 ProjectListWindow::ProjectListWindow(const juce::String& recordingsSubDir,
+    AudioEngine& engine,
     std::function<void(const juce::File&)> onProjectChosen)
     : DocumentWindow(LanguageManager::getInstance().get("projectListWindow.title"),
         juce::Desktop::getInstance().getDefaultLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId),
@@ -153,23 +164,23 @@ ProjectListWindow::ProjectListWindow(const juce::String& recordingsSubDir,
     setUsingNativeTitleBar(true);
     setResizable(true, true);
     setResizeLimits(400, 300, 800, 1000);
-    setContentOwned(new ProjectListContentComponent(recordingsSubDir, onProjectChosen), true);
+    // Truyền engine xuống cho content
+    content = std::make_unique<ProjectListContentComponent>(recordingsSubDir, engine, onProjectChosen);
+    setContentOwned(content.get(), true);
     centreWithSize(500, 600);
 }
 
 ProjectListWindow::~ProjectListWindow()
 {
 }
-
 void ProjectListWindow::closeButtonPressed()
 {
-    setVisible(false);
+    // Lệnh này sẽ tự động xóa cửa sổ khỏi bộ nhớ một cách an toàn.
+    delete this;
 }
 
 void ProjectListWindow::refreshList()
 {
-    if (auto* contentComp = dynamic_cast<ProjectListContentComponent*>(getContentComponent()))
-    {
+    if (auto* contentComp = dynamic_cast<ProjectListContentComponent*>(content.get()))
         contentComp->findProjects();
-    }
 }

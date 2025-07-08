@@ -79,8 +79,8 @@ MainComponent::MainComponent()
     addAndMakeVisible(*statusBar);
 
     audioEngine.linkTrackComponents(*vocalTrack, *musicTrack);
-    vocalTrack->setAudioEngine(&audioEngine);
-    musicTrack->setAudioEngine(&audioEngine);
+    vocalTrack->setAudioEngine(&audioEngine, *deviceManager);
+    musicTrack->setAudioEngine(&audioEngine, *deviceManager);
     audioEngine.setSelectedOutputChannels(0, 1);
     audioEngine.linkMasterComponents(*masterUtilityColumn);
 

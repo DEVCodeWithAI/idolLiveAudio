@@ -424,7 +424,5 @@ FXChainWindow::~FXChainWindow() { contentComponent.reset(); }
 
 void FXChainWindow::closeButtonPressed()
 {
-    // Thay vì xóa ngay lập tức, chúng ta gửi một yêu cầu để xóa sau.
-    // Điều này đảm bảo an toàn và tránh được lỗi crash.
-    juce::MessageManager::callAsync([this] { delete this; });
+    delete this;
 }

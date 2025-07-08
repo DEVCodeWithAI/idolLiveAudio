@@ -35,6 +35,10 @@
       </GROUP>
       <GROUP id="{3E3506BA-0FCC-E4C9-5279-D85552AFD218}" name="GUI">
         <GROUP id="{BA2BD80C-7A5E-8E20-CA4D-B1E248C181BC}" name="Components">
+          <FILE id="OZpQGH" name="ChannelSelectorComponent.cpp" compile="1" resource="0"
+                file="Source/GUI/Components/ChannelSelectorComponent.cpp"/>
+          <FILE id="Gsiqad" name="ChannelSelectorComponent.h" compile="0" resource="0"
+                file="Source/GUI/Components/ChannelSelectorComponent.h"/>
           <FILE id="N2Z0ia" name="FxSendsComponent.cpp" compile="1" resource="0"
                 file="Source/GUI/Components/FxSendsComponent.cpp"/>
           <FILE id="NcroLF" name="FxSendsComponent.h" compile="0" resource="0"
