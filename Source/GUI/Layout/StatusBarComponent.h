@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "JuceHeader.h"
 #include "../../Data/LanguageManager/LanguageManager.h"
 
@@ -18,5 +18,10 @@ private:
     void updateTexts();
 
     juce::Label cpuLabel, latencyLabel, sampleRateLabel;
-    juce::Label statusLabel; // Replaces errorLabel for general messages
+    juce::Label statusLabel;
+
+    // <<< SỬA: Dùng 2 Label riêng biệt >>>
+    juce::Label attributionText; // Cho phần text thường
+    juce::Label linkText;        // Cho phần text in đậm
+    juce::HyperlinkButton linkButton;  // Vẫn là button vô hình
 };
