@@ -156,10 +156,12 @@ private:
 // <<< SỬA: Cập nhật hàm khởi tạo của Window >>>
 ProjectListWindow::ProjectListWindow(const juce::String& recordingsSubDir,
     AudioEngine& engine,
-    std::function<void(const juce::File&)> onProjectChosen)
+    std::function<void(const juce::File&)> onProjectChosen,
+    std::function<void()> onWindowClosed)
     : DocumentWindow(LanguageManager::getInstance().get("projectListWindow.title"),
         juce::Desktop::getInstance().getDefaultLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId),
-        allButtons)
+        allButtons),
+    onWindowClosedCallback(onWindowClosed)
 {
     setUsingNativeTitleBar(true);
     setResizable(true, true);
@@ -173,10 +175,12 @@ ProjectListWindow::ProjectListWindow(const juce::String& recordingsSubDir,
 ProjectListWindow::~ProjectListWindow()
 {
 }
+
+// <<< MODIFIED: Calls the callback, no longer deletes itself >>>
 void ProjectListWindow::closeButtonPressed()
 {
-    // Lệnh này sẽ tự động xóa cửa sổ khỏi bộ nhớ một cách an toàn.
-    delete this;
+    if (onWindowClosedCallback)
+        onWindowClosedCallback();
 }
 
 void ProjectListWindow::refreshList()

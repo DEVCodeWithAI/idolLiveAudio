@@ -2,7 +2,7 @@
 #include "../../GUI/Layout/TrackComponent.h"
 #include "../../Components/Helpers.h"
 
-// ================== Component Tiêu Đề Tùy Chỉnh ==================
+// ... (FxSendsTitleComponent class is unchanged) ...
 class FxSendsTitleComponent : public juce::Component
 {
 public:
@@ -120,5 +120,21 @@ void FxSendsComponent::updateTexts()
     for (int i = 0; i < 4; ++i)
     {
         updateMuteButtonState(i, fxMuteButtons[i].getToggleState());
+    }
+}
+
+// <<< ADDED: Implementation of the new granular locking function >>>
+void FxSendsComponent::setLocked(bool shouldBeLocked)
+{
+    // Only disable the buttons that open FX windows
+    for (auto& button : fxButtons)
+    {
+        button.setEnabled(!shouldBeLocked);
+    }
+
+    // The mute buttons are NEVER locked
+    for (auto& muteButton : fxMuteButtons)
+    {
+        muteButton.setEnabled(true);
     }
 }

@@ -12,6 +12,8 @@
 #include "../../GUI/Components/RecorderComponent.h"
 
 class MasterPluginsWindow;
+// <<< ADDED: Forward declaration for QuickKeySettingsWindow >>>
+class QuickKeySettingsWindow;
 
 class MasterUtilityComponent : public juce::Component,
     public juce::ChangeListener
@@ -47,6 +49,8 @@ private:
     MasterProcessor* masterProcessor = nullptr;
 
     std::unique_ptr<MasterPluginsWindow> masterPluginsWindow;
+    // <<< ADDED: std::unique_ptr to own the settings window >>>
+    std::unique_ptr<QuickKeySettingsWindow> quickKeySettingsWindow;
 
     // <<< THÊM COMPONENT MỚI >>>
     std::unique_ptr<RecorderComponent> recorderComponent;

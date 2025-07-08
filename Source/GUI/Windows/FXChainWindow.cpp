@@ -422,7 +422,13 @@ FXChainWindow::FXChainWindow(const juce::String& name, ProcessorBase& processorT
 
 FXChainWindow::~FXChainWindow() { contentComponent.reset(); }
 
+// <<< MODIFIED: Safe self-deletion >>>
 void FXChainWindow::closeButtonPressed()
 {
-    delete this;
+    // This safely schedules the deletion of this window on the message thread,
+    // preventing crashes if the window is still being accessed.
+    juce::MessageManager::callAsync([safeThis = juce::Component::SafePointer(this)]() mutable {
+        if (safeThis)
+            delete safeThis.getComponent();
+        });
 }

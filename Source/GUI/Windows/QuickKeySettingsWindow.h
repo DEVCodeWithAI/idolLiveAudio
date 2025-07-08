@@ -13,6 +13,7 @@
 #include "../../Data/SoundboardSlot.h"
 #include "../../Data/LanguageManager/LanguageManager.h"
 #include "../../Data/SoundboardManager.h"
+#include <functional> // <<< ADDED: Include for std::function
 
 class QuickKeySettingsContentComponent; // Forward declaration
 
@@ -21,12 +22,15 @@ class QuickKeySettingsContentComponent; // Forward declaration
 class QuickKeySettingsWindow : public juce::DocumentWindow
 {
 public:
-    QuickKeySettingsWindow();
+    // <<< MODIFIED: Constructor now takes a callback >>>
+    QuickKeySettingsWindow(std::function<void()> onWindowClosed);
     ~QuickKeySettingsWindow() override;
 
     void closeButtonPressed() override;
 
 private:
+    // <<< ADDED: Member to store the callback >>>
+    std::function<void()> onWindowClosedCallback;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(QuickKeySettingsWindow)
 };
 

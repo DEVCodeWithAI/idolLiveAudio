@@ -44,9 +44,20 @@ MasterUtilityComponent::MasterUtilityComponent(AudioEngine& engine)
         }
         };
 
-    quickKeySettingsButton.onClick = []
+    // <<< MODIFIED: This now safely manages the window's lifecycle >>>
+    quickKeySettingsButton.onClick = [this]
         {
-            // new QuickKeySettingsWindow(); // This creates a memory leak, will need fixing later
+            if (quickKeySettingsWindow == nullptr)
+            {
+                // Create the window with a callback that resets this unique_ptr
+                quickKeySettingsWindow = std::make_unique<QuickKeySettingsWindow>(
+                    [this] { quickKeySettingsWindow.reset(); }
+                );
+            }
+            else
+            {
+                quickKeySettingsWindow->toFront(true);
+            }
         };
 
     addAndMakeVisible(masterVolumeLabel);
@@ -200,6 +211,11 @@ void MasterUtilityComponent::closeAllPluginWindows()
     if (masterPluginsWindow != nullptr)
     {
         masterPluginsWindow.reset();
+    }
+    // <<< ADDED: Also close the QuickKeySettingsWindow on shutdown >>>
+    if (quickKeySettingsWindow != nullptr)
+    {
+        quickKeySettingsWindow.reset();
     }
 }
 

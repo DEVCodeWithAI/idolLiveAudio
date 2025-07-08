@@ -49,10 +49,7 @@ ProjectManagerComponent::ProjectManagerComponent(AudioEngine& engine) : audioEng
 
 ProjectManagerComponent::~ProjectManagerComponent()
 {
-    if (projectListWindow != nullptr)
-    {
-        delete projectListWindow.getComponent();
-    }
+    // unique_ptr will handle deletion automatically.
     LanguageManager::getInstance().removeChangeListener(this);
     audioEngine.getProjectState().removeListener(this);
 }
@@ -197,15 +194,21 @@ void ProjectManagerComponent::stopProject()
     audioEngine.stopLoadedProject();
 }
 
+// <<< MODIFIED: Now uses unique_ptr and a callback for lifecycle management >>>
 void ProjectManagerComponent::manageProjects()
 {
     if (projectListWindow == nullptr)
     {
-        auto* window = new ProjectListWindow("Projects", audioEngine, [this](const juce::File& projectJsonFile) {
-            audioEngine.loadProject(projectJsonFile);
-            });
-        projectListWindow = window;
-        window->setVisible(true);
+        projectListWindow = std::make_unique<ProjectListWindow>(
+            "Projects",
+            audioEngine,
+            [this](const juce::File& projectJsonFile) {
+                audioEngine.loadProject(projectJsonFile);
+            },
+            [this] { // on close callback
+                projectListWindow.reset();
+            }
+        );
     }
     else
     {

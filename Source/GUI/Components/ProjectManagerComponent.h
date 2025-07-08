@@ -29,8 +29,8 @@ private:
 
     AudioEngine& audioEngine;
 
-    // <<< SỬA: Thay thế WeakReference bằng Component::SafePointer >>>
-    juce::Component::SafePointer<ProjectListWindow> projectListWindow;
+    // <<< MODIFIED: Changed from SafePointer to unique_ptr for ownership >>>
+    std::unique_ptr<ProjectListWindow> projectListWindow;
 
     juce::Label loadedProjectTitleLabel;
     juce::Label loadedProjectLabel;

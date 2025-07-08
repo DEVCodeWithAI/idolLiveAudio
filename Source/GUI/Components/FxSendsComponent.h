@@ -20,6 +20,9 @@ public:
 
     void updateMuteButtonState(int index, bool isMuted);
 
+    // <<< ADDED: New method to handle granular locking >>>
+    void setLocked(bool shouldBeLocked);
+
 private:
     void changeListenerCallback(juce::ChangeBroadcaster* source) override;
     void updateTexts();

@@ -119,9 +119,13 @@ public:
 
     juce::AudioPluginInstance& getOwnerPlugin() const { return ownerPlugin; }
 
+    // <<< MODIFIED: Safe self-deletion >>>
     void closeButtonPressed() override
     {
-        juce::MessageManager::callAsync([this] { delete this; });
+        juce::MessageManager::callAsync([safeThis = juce::Component::SafePointer(this)]() mutable {
+            if (safeThis)
+                delete safeThis.getComponent();
+            });
     }
 
     void audioProcessorParameterChanged(juce::AudioProcessor*, int, float) override {}

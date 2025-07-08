@@ -427,9 +427,11 @@ void QuickKeySettingsContentComponent::updateAllSlotEditors()
 // QuickKeySettingsWindow Implementation
 //==============================================================================
 
-QuickKeySettingsWindow::QuickKeySettingsWindow()
+// <<< MODIFIED: Constructor implementation >>>
+QuickKeySettingsWindow::QuickKeySettingsWindow(std::function<void()> onWindowClosed)
     : DocumentWindow("Soundboard Settings", juce::Desktop::getInstance().getDefaultLookAndFeel()
-        .findColour(juce::ResizableWindow::backgroundColourId), allButtons)
+        .findColour(juce::ResizableWindow::backgroundColourId), allButtons),
+    onWindowClosedCallback(onWindowClosed)
 {
     setUsingNativeTitleBar(true);
     setContentOwned(new QuickKeySettingsContentComponent(), true);
@@ -441,8 +443,10 @@ QuickKeySettingsWindow::QuickKeySettingsWindow()
 
 QuickKeySettingsWindow::~QuickKeySettingsWindow() {}
 
+// <<< MODIFIED: closeButtonPressed calls the callback now >>>
 void QuickKeySettingsWindow::closeButtonPressed()
 {
-    // Áp dụng giải pháp tương tự ở đây
-    juce::MessageManager::callAsync([this] { delete this; });
+    if (onWindowClosedCallback)
+        onWindowClosedCallback();
+    // The window is no longer responsible for deleting itself.
 }

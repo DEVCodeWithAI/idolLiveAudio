@@ -154,11 +154,16 @@ public:
 
     void setLocked(bool shouldBeLocked, bool isSpecialSlot)
     {
-        if (isSpecialSlot && shouldBeLocked)
+        if (!isSpecialSlot)
+        {
+            setEnabled(!shouldBeLocked);
+            return;
+        }
+
+        if (shouldBeLocked)
         {
             setEnabled(true);
             openButton.setEnabled(true);
-
             powerButton.setEnabled(false);
             removeButton.setEnabled(false);
             moveUpButton.setEnabled(false);
@@ -166,7 +171,12 @@ public:
         }
         else
         {
-            setEnabled(!shouldBeLocked);
+            setEnabled(true);
+            openButton.setEnabled(true);
+            powerButton.setEnabled(true);
+            removeButton.setEnabled(true);
+            moveUpButton.setEnabled(true);
+            moveDownButton.setEnabled(true);
         }
     }
 private:
@@ -909,8 +919,10 @@ void TrackComponent::updateLockState()
     volumeSlider.setEnabled(!isLocked);
     addPluginSelector.setEnabled(!isLocked);
     addButton.setEnabled(!isLocked);
-    fxSends->setEnabled(!isLocked);
-    muteButton.setEnabled(true);
+
+    fxSends->setLocked(isLocked);
+
+    muteButton.setEnabled(true); // Mute button is always enabled
 
     pluginListBox.setEnabled(true);
 
