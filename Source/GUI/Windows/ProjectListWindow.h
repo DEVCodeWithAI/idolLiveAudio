@@ -10,7 +10,7 @@ class AudioEngine;
 class ProjectListWindow : public juce::DocumentWindow
 {
 public:
-    // <<< MODIFIED: Constructor now accepts a close callback >>>
+    // <<< MODIFIED: Constructor now accepts an on-close callback >>>
     ProjectListWindow(const juce::String& recordingsSubDir,
         AudioEngine& engine,
         std::function<void(const juce::File&)> onProjectChosen,
@@ -21,9 +21,8 @@ public:
     void closeButtonPressed() override;
     void refreshList();
 
-
 private:
-    // <<< ADDED: Member to store the close callback >>>
+    // <<< ADDED: Callback member >>>
     std::function<void()> onWindowClosedCallback;
     std::unique_ptr<ProjectListContentComponent> content;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ProjectListWindow)

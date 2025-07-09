@@ -29,7 +29,7 @@ private:
 
     AudioEngine& audioEngine;
 
-    // <<< MODIFIED: Changed from SafePointer to unique_ptr for ownership >>>
+    // <<< MODIFIED: Changed from SafePointer to unique_ptr for robust ownership >>>
     std::unique_ptr<ProjectListWindow> projectListWindow;
 
     juce::Label loadedProjectTitleLabel;

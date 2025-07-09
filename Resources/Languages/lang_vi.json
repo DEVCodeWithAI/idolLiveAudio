@@ -13,14 +13,21 @@
     },
     "presetbar": {
         "presetRunning": "Preset đang chạy:",
-        "quickChoice": "Chọn nhanh:",
+        "quickChoice": "Tải Nhanh:",
         "load": "Tải",
         "noPresetLoaded": "Chưa tải Preset",
+        "saveTitle": "Lưu Preset",
+        "saveMessage": "Một preset đang được tải. Bạn muốn lưu như thế nào?",
+        "saveOverwrite": "Lưu (Ghi đè)",
+        "saveAsNew": "Lưu với tên mới...",
         "overwriteTitle": "Ghi đè Preset",
         "overwriteMessage": "Một preset có tên '{{presetName}}' đã tồn tại. Bạn có muốn ghi đè lên nó không?",
         "saveAsTitle": "Lưu Preset với tên...",
         "yes": "Đồng ý",
-        "no": "Không"
+        "no": "Không",
+        "emptySlot": "Ô",
+        "assignPreset": "Gán Preset vào ô này",
+        "clearSlot": "Xóa gán ở ô này"
     },
     "tracks": {
         "vocal": "GIỌNG HÁT",
@@ -177,6 +184,10 @@
         "delete": "Xóa",
         "deleteConfirmTitle": "Xác Nhận Xóa",
         "deleteConfirmMessage": "Bạn có chắc chắn muốn xóa vĩnh viễn project '{{projectName}}' và toàn bộ các file audio bên trong không?"
+    },
+	"fxChain": {
+        "send": "Gửi đi:",
+        "return": "Nhận về:"
     },
 	"lock": {
         "unlockTitle": "Mở khóa Hệ thống",

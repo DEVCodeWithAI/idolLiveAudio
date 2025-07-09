@@ -32,7 +32,6 @@ ProjectManagerComponent::ProjectManagerComponent(AudioEngine& engine) : audioEng
     addAndMakeVisible(stopProjectButton);
     stopProjectButton.onClick = [this] { stopProject(); };
 
-    // <<< THÊM: Khởi tạo và cấu hình các label >>>
     addAndMakeVisible(loadedProjectTitleLabel);
     loadedProjectTitleLabel.setFont(IdolUIHelpers::createRegularFont(14.0f));
     loadedProjectTitleLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
@@ -49,7 +48,7 @@ ProjectManagerComponent::ProjectManagerComponent(AudioEngine& engine) : audioEng
 
 ProjectManagerComponent::~ProjectManagerComponent()
 {
-    // unique_ptr will handle deletion automatically.
+    // unique_ptr handles the destruction automatically
     LanguageManager::getInstance().removeChangeListener(this);
     audioEngine.getProjectState().removeListener(this);
 }
@@ -62,23 +61,19 @@ void ProjectManagerComponent::paint(juce::Graphics& g)
     g.drawRoundedRectangle(getLocalBounds().toFloat(), 5.0f, 1.0f);
 }
 
-// <<< SỬA: Thêm static_cast<int> để loại bỏ cảnh báo >>>
 void ProjectManagerComponent::resized()
 {
     auto bounds = getLocalBounds().reduced(10);
 
-    // Chia thành 2 cột: trái cho thông tin, phải cho các nút
-    auto rightArea = bounds.removeFromRight(450); // Dành không gian rộng hơn cho các nút
+    auto rightArea = bounds.removeFromRight(450);
     auto leftArea = bounds;
 
-    // Layout cho cột trái
     loadedProjectTitleLabel.setBounds(leftArea.removeFromTop(leftArea.getHeight() / 2));
     loadedProjectLabel.setBounds(leftArea);
 
-    // Layout cho cột phải (4 nút trên cùng một hàng)
     juce::FlexBox fb;
-    fb.justifyContent = juce::FlexBox::JustifyContent::flexEnd; // Căn lề phải
-    fb.alignItems = juce::FlexBox::AlignItems::stretch; // Các nút cao bằng nhau
+    fb.justifyContent = juce::FlexBox::JustifyContent::flexEnd;
+    fb.alignItems = juce::FlexBox::AlignItems::stretch;
 
     const float gap = 10.0f;
 
@@ -106,12 +101,10 @@ void ProjectManagerComponent::valueTreePropertyChanged(juce::ValueTree& tree, co
         bool isPlaying = tree.getProperty(ProjectStateIDs::isPlaying);
         juce::String projectName = tree.getProperty(ProjectStateIDs::name).toString();
 
-        // Label "Loaded:" luôn hiển thị
         loadedProjectTitleLabel.setText(lang.get("projectManager.loaded"), juce::dontSendNotification);
 
         if (projectName.isNotEmpty())
         {
-            // Nếu có project, hiển thị tên và cập nhật các nút
             loadedProjectLabel.setText(projectName, juce::dontSendNotification);
             playProjectButton.setEnabled(!isPlaying);
             stopProjectButton.setEnabled(isPlaying);
@@ -119,7 +112,6 @@ void ProjectManagerComponent::valueTreePropertyChanged(juce::ValueTree& tree, co
         }
         else
         {
-            // Nếu không có project, hiển thị placeholder và cập nhật các nút
             loadedProjectLabel.setText(lang.get("projectManager.noProjectLoaded"), juce::dontSendNotification);
             playProjectButton.setEnabled(false);
             stopProjectButton.setEnabled(false);
@@ -140,7 +132,6 @@ void ProjectManagerComponent::updateTexts()
     playProjectButton.setButtonText(lang.get("projectManager.play"));
     stopProjectButton.setButtonText(lang.get("projectManager.stop"));
 
-    // <<< SỬA: Cập nhật lại cả hai label khi đổi ngôn ngữ >>>
     valueTreePropertyChanged(audioEngine.getProjectState(), {});
 }
 
@@ -194,24 +185,24 @@ void ProjectManagerComponent::stopProject()
     audioEngine.stopLoadedProject();
 }
 
-// <<< MODIFIED: Now uses unique_ptr and a callback for lifecycle management >>>
+// <<< MODIFIED: This now correctly manages the window lifecycle >>>
 void ProjectManagerComponent::manageProjects()
 {
     if (projectListWindow == nullptr)
     {
+        // Create the window and give it a callback to run on close.
+        // The callback safely resets this component's unique_ptr.
         projectListWindow = std::make_unique<ProjectListWindow>(
             "Projects",
             audioEngine,
             [this](const juce::File& projectJsonFile) {
                 audioEngine.loadProject(projectJsonFile);
             },
-            [this] { // on close callback
+            [this] { // on window close
                 projectListWindow.reset();
             }
         );
     }
-    else
-    {
-        projectListWindow->toFront(true);
-    }
+
+    projectListWindow->toFront(true);
 }

@@ -8,8 +8,8 @@
   <MAINGROUP id="B708Sa" name="idolLiveAudio">
     <GROUP id="{AD963046-D105-7E97-82F8-04E24F432A02}" name="Resources">
       <GROUP id="{08105253-0E21-EFD1-B951-19A48B0626BC}" name="Languages">
-        <FILE id="WEtGB4" name="lang_en.json" compile="0" resource="1" file="Resources/Languages/lang_en.json"/>
-        <FILE id="Tp6IYx" name="lang_vi.json" compile="0" resource="1" file="Resources/Languages/lang_vi.json"/>
+        <FILE id="MOA2Yv" name="lang_en.json" compile="0" resource="1" file="Resources/Languages/lang_en.json"/>
+        <FILE id="aDC3m4" name="lang_vi.json" compile="0" resource="1" file="Resources/Languages/lang_vi.json"/>
       </GROUP>
       <FILE id="etZReR" name="icon_128x128.png" compile="0" resource="1"
             file="Resources/icon_128x128.png"/>

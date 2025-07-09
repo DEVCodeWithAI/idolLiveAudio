@@ -4,7 +4,7 @@
 #include "../../Data/AppState.h"
 #include "../../Data/PluginManager/PluginManager.h"
 
-// <<< ADDED: Helper class for floating plugin editor windows >>>
+// ... (PluginWindow class is unchanged) ...
 class PluginWindow final : public juce::DocumentWindow
 {
 public:
@@ -53,7 +53,7 @@ private:
 
 class FXChainWindow::Content;
 
-//==============================================================================
+// ... (PluginItemComponent class is unchanged) ...
 class PluginItemComponent : public juce::Component, public juce::Button::Listener
 {
 public:
@@ -67,7 +67,6 @@ public:
         moveUpButton.setBounds(reorderArea.removeFromTop(reorderArea.getHeight() / 2));
         moveDownButton.setBounds(reorderArea);
         bounds.removeFromRight(5);
-        // <<< MODIFIED: Adjusted width for new open button >>>
         auto controlsArea = bounds.removeFromRight(120);
         removeButton.setBounds(controlsArea.removeFromRight(30).reduced(2));
         controlsArea.removeFromRight(5);
@@ -84,7 +83,6 @@ private:
     FXChainWindow::Content& ownerComponent;
     int rowNumber;
     juce::Label nameLabel;
-    // <<< ADDED: Open button >>>
     juce::TextButton openButton;
     juce::ToggleButton powerButton;
     juce::TextButton removeButton, moveUpButton, moveDownButton;
@@ -104,35 +102,36 @@ public:
     {
         processorToControl.addChangeListener(this);
         getSharedPluginManager().addChangeListener(this);
+        LanguageManager::getInstance().addChangeListener(this); // <<< ADDED
         addListenerToAllPlugins();
 
-        // ... (Slider and Label setup code is unchanged) ...
+        // <<< MODIFIED: Slider and Label setup >>>
+        auto& lang = LanguageManager::getInstance();
+
         addAndMakeVisible(sendSlider);
-        sendSlider.setSliderStyle(juce::Slider::LinearBarVertical);
+        sendSlider.setSliderStyle(juce::Slider::LinearHorizontal);
         sendSlider.setRange(0.0, 100.0, 0.1);
-        sendSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
+        sendSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 60, 20);
         sendSlider.addListener(this);
         sendSlider.setValue(processorToControl.getSendLevel() * 100.0, juce::dontSendNotification);
 
         addAndMakeVisible(sendLabel);
-        sendLabel.setText("Send", juce::dontSendNotification);
-        sendLabel.setJustificationType(juce::Justification::centred);
-        sendLabel.attachToComponent(&sendSlider, false);
+        sendLabel.setText(lang.get("fxChain.send"), juce::dontSendNotification);
+        sendLabel.setJustificationType(juce::Justification::centredRight);
 
         addAndMakeVisible(returnSlider);
-        returnSlider.setSliderStyle(juce::Slider::LinearBarVertical);
+        returnSlider.setSliderStyle(juce::Slider::LinearHorizontal);
         returnSlider.setRange(0.0, 100.0, 0.1);
-        returnSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 60, 20);
+        returnSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 60, 20);
         returnSlider.addListener(this);
         returnSlider.setValue(processorToControl.getReturnLevel() * 100.0, juce::dontSendNotification);
 
         addAndMakeVisible(returnLabel);
-        returnLabel.setText("Return", juce::dontSendNotification);
-        returnLabel.setJustificationType(juce::Justification::centred);
-        returnLabel.attachToComponent(&returnSlider, false);
+        returnLabel.setText(lang.get("fxChain.return"), juce::dontSendNotification);
+        returnLabel.setJustificationType(juce::Justification::centredRight);
 
         addAndMakeVisible(pluginListLabel);
-        pluginListLabel.setText("Plugin Chain", juce::dontSendNotification);
+        pluginListLabel.setText(lang.get("tracks.activePlugins"), juce::dontSendNotification); // <<< MODIFIED
         pluginListLabel.setFont(IdolUIHelpers::createRegularFont(16.0f));
 
         addAndMakeVisible(pluginListBox);
@@ -142,13 +141,15 @@ public:
 
         addAndMakeVisible(addPluginSelector);
         addPluginSelector.setEditableText(true);
+        // <<< MODIFIED: Add placeholder text >>>
+        addPluginSelector.setTextWhenNothingSelected(lang.get("tracks.addPluginPlaceholder"));
         addPluginSelector.addListener(this);
         updatePluginSelector();
 
         isUpdatingFromTextChange = false;
 
         addAndMakeVisible(addButton);
-        addButton.setButtonText("Add");
+        addButton.setButtonText(lang.get("tracks.add")); // <<< MODIFIED
         addButton.onClick = [this] { addSelectedPlugin(); };
 
         setSize(500, 600);
@@ -156,42 +157,46 @@ public:
 
     ~Content() override
     {
-        // Xóa tất cả các cửa sổ editor plugin một cách đồng bộ.
-        // Đây là cách làm đúng và an toàn.
         openPluginWindows.clear();
-
-        // Hủy đăng ký các listener
         processorToControl.removeChangeListener(this);
         getSharedPluginManager().removeChangeListener(this);
+        LanguageManager::getInstance().removeChangeListener(this); // <<< ADDED
         removeListenerFromAllPlugins();
     }
 
-    // ... (paint, resized, sliderValueChanged, etc. are unchanged) ...
+    // <<< MODIFIED: paint() is simplified >>>
     void paint(juce::Graphics& g) override
     {
         g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
-        auto bounds = getLocalBounds();
-        auto pluginArea = bounds.removeFromRight(static_cast<int>(bounds.getWidth() * 0.66f));
-        g.setColour(juce::Colours::grey);
-        g.drawVerticalLine(pluginArea.getX(), bounds.getY() + 10.0f, bounds.getBottom() - 10.0f);
     }
 
+    // <<< MODIFIED: resized() is completely new >>>
     void resized() override
     {
         auto bounds = getLocalBounds().reduced(10);
-        auto controlsArea = bounds.removeFromLeft(static_cast<int>(bounds.getWidth() * 0.33f));
+
+        // Top area for Send/Return controls
+        auto topControlsArea = bounds.removeFromTop(60);
+        auto sendArea = topControlsArea.removeFromTop(topControlsArea.getHeight() / 2).reduced(0, 2);
+        auto returnArea = topControlsArea.reduced(0, 2);
+
+        sendLabel.setBounds(sendArea.removeFromLeft(60));
+        sendSlider.setBounds(sendArea);
+
+        returnLabel.setBounds(returnArea.removeFromLeft(60));
+        returnSlider.setBounds(returnArea);
+
+        bounds.removeFromTop(10);
+
+        // Bottom area for plugin list
         auto pluginArea = bounds;
-        pluginArea.removeFromLeft(10);
-
-        auto sendArea = controlsArea.removeFromLeft(controlsArea.getWidth() / 2);
-        auto returnArea = controlsArea;
-        sendSlider.setBounds(sendArea.reduced(10, 30));
-        returnSlider.setBounds(returnArea.reduced(10, 30));
-
         pluginListLabel.setBounds(pluginArea.removeFromTop(30));
+
         auto addArea = pluginArea.removeFromBottom(30);
         pluginArea.removeFromBottom(10);
+
         pluginListBox.setBounds(pluginArea);
+
         addButton.setBounds(addArea.removeFromRight(80));
         addArea.removeFromRight(10);
         addPluginSelector.setBounds(addArea);
@@ -228,9 +233,9 @@ public:
 
     ProcessorBase& getProcessor() { return processorToControl; }
 
-    // ... (rest of the Content class methods) ...
     void comboBoxChanged(juce::ComboBox* cb) override
     {
+        if (isUpdatingFromTextChange) return; // <<< ADDED
         if (cb == &addPluginSelector && addPluginSelector.getSelectedId() == 0)
             updatePluginSelector(addPluginSelector.getText());
     }
@@ -247,8 +252,19 @@ public:
         {
             updatePluginSelector();
         }
+        // <<< ADDED: Handle language changes >>>
+        else if (source == &LanguageManager::getInstance())
+        {
+            auto& lang = LanguageManager::getInstance();
+            sendLabel.setText(lang.get("fxChain.send"), juce::dontSendNotification);
+            returnLabel.setText(lang.get("fxChain.return"), juce::dontSendNotification);
+            pluginListLabel.setText(lang.get("tracks.activePlugins"), juce::dontSendNotification);
+            addButton.setButtonText(lang.get("tracks.add"));
+            addPluginSelector.setTextWhenNothingSelected(lang.get("tracks.addPluginPlaceholder"));
+        }
     }
 
+    // ... (rest of the Content class is largely unchanged) ...
     int getNumRows() override { return processorToControl.getNumPlugins(); }
     void paintListBoxItem(int, juce::Graphics&, int, int, bool) override {}
 
@@ -283,13 +299,9 @@ public:
 
     void updatePluginSelector(const juce::String& searchText = {})
     {
-        // Thêm các biến isUpdatingFromTextChange để tránh vòng lặp vô hạn,
-        // giống như cách TrackComponent đã làm.
         isUpdatingFromTextChange = true;
-
         const auto currentText = addPluginSelector.getText();
         const auto currentlySelectedId = addPluginSelector.getSelectedId();
-
         addPluginSelector.clear(juce::dontSendNotification);
 
         bool currentSelectionStillExists = false;
@@ -299,18 +311,14 @@ public:
             if (desc.uniqueId == currentlySelectedId)
                 currentSelectionStillExists = true;
         }
-
         if (currentSelectionStillExists)
             addPluginSelector.setSelectedId(currentlySelectedId, juce::dontSendNotification);
-
         addPluginSelector.setText(currentText, juce::dontSendNotification);
 
-        // <<< FIX IS HERE: Thêm logic để hiển thị popup >>>
         if (searchText.isNotEmpty())
             addPluginSelector.showPopup();
         else
             addPluginSelector.hidePopup();
-
         isUpdatingFromTextChange = false;
     }
 
@@ -349,11 +357,10 @@ private:
     juce::ComboBox addPluginSelector;
     juce::TextButton addButton;
     bool isUpdatingFromTextChange = false;
-    // <<< ADDED: To manage open plugin editor windows >>>
     juce::OwnedArray<juce::DocumentWindow> openPluginWindows;
 };
 
-// <<< MODIFIED: Implementation of PluginItemComponent with Open button >>>
+// ... (PluginItemComponent implementation is unchanged) ...
 PluginItemComponent::PluginItemComponent(FXChainWindow::Content& owner, int row) : ownerComponent(owner), rowNumber(row)
 {
     addAndMakeVisible(nameLabel);
@@ -407,7 +414,7 @@ void PluginItemComponent::update(int newRowNumber)
 }
 
 
-//==============================================================================
+// ... (FXChainWindow implementation is unchanged) ...
 FXChainWindow::FXChainWindow(const juce::String& name, ProcessorBase& processorToControl)
     : DocumentWindow(name, juce::Desktop::getInstance().getDefaultLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId), allButtons)
 {
@@ -416,17 +423,20 @@ FXChainWindow::FXChainWindow(const juce::String& name, ProcessorBase& processorT
     setResizeLimits(450, 400, 1000, 1200);
     contentComponent = std::make_unique<Content>(processorToControl);
     setContentOwned(contentComponent.get(), true);
-    centreWithSize(500, 600);
+    centreWithSize(500, 450); // <<< MODIFIED: Reduced default height
     setVisible(true);
 }
 
-FXChainWindow::~FXChainWindow() { contentComponent.reset(); }
+FXChainWindow::~FXChainWindow()
+{
+    juce::MessageManager::callAsync([safeThis = juce::Component::SafePointer(this)]() mutable {
+        if (safeThis)
+            delete safeThis.getComponent();
+        });
+}
 
-// <<< MODIFIED: Safe self-deletion >>>
 void FXChainWindow::closeButtonPressed()
 {
-    // This safely schedules the deletion of this window on the message thread,
-    // preventing crashes if the window is still being accessed.
     juce::MessageManager::callAsync([safeThis = juce::Component::SafePointer(this)]() mutable {
         if (safeThis)
             delete safeThis.getComponent();

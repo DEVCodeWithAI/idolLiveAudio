@@ -13,14 +13,21 @@
     },
     "presetbar": {
         "presetRunning": "Preset Running:",
-        "quickChoice": "Quick Choice:",
+        "quickChoice": "Quick Load:",
         "load": "Load",
         "noPresetLoaded": "No Preset Loaded",
+        "saveTitle": "Save Preset",
+        "saveMessage": "A preset is currently loaded. How would you like to save?",
+        "saveOverwrite": "Save (Overwrite)",
+        "saveAsNew": "Save As New...",
         "overwriteTitle": "Overwrite Preset",
         "overwriteMessage": "A preset named '{{presetName}}' already exists. Do you want to overwrite it?",
         "saveAsTitle": "Save Preset As...",
         "yes": "Yes",
-        "no": "No"
+        "no": "No",
+        "emptySlot": "Slot",
+        "assignPreset": "Assign Preset to this Slot",
+        "clearSlot": "Clear this Slot"
     },
     "tracks": {
         "vocal": "VOCAL",
@@ -177,6 +184,10 @@
         "delete": "Delete",
         "deleteConfirmTitle": "Confirm Deletion",
         "deleteConfirmMessage": "Are you sure you want to permanently delete the project '{{projectName}}' and all its audio files?"
+    },
+    "fxChain": {
+        "send": "Send:",
+        "return": "Return:"
     },
 	"lock": {
         "unlockTitle": "Unlock System",

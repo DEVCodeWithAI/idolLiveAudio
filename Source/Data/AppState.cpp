@@ -5,6 +5,7 @@
 #include "../GUI/Layout/TrackComponent.h"
 #include "../GUI/Layout/MasterUtilityComponent.h"
 #include "../GUI/Layout/PresetBarComponent.h"
+// <<< FIX: Include the full definition for MenubarComponent >>>
 #include "../GUI/Layout/MenubarComponent.h"
 #include "juce_audio_devices/juce_audio_devices.h"
 #include <juce_cryptography/juce_cryptography.h>
@@ -23,6 +24,7 @@ namespace SessionIds
     const juce::Identifier ACTIVE_PRESET("ACTIVE_PRESET");
     const juce::Identifier presetName("name");
     const juce::Identifier OPEN_WINDOWS("OPEN_WINDOWS");
+    const juce::Identifier QUICK_PRESETS("QUICK_PRESETS");
 }
 
 namespace WindowStateIds
@@ -39,6 +41,9 @@ AppState& AppState::getInstance()
 AppState::AppState()
 {
     currentPresetName = LanguageManager::getInstance().get("presetbar.noPresetLoaded");
+    // <<< MODIFIED: Initialize for 5 quick preset slots >>>
+    for (int i = 0; i < numQuickSlots; ++i)
+        quickPresetSlots.add({});
 }
 
 AppState::~AppState() {}
@@ -91,6 +96,7 @@ juce::File AppState::getSessionFile() const
 
 void AppState::saveState(MainComponent& mainComponent)
 {
+    // ... (code to save other settings is unchanged) ...
     auto& deviceManager = mainComponent.getAudioDeviceManager();
     auto& audioEngine = mainComponent.getAudioEngine();
 
@@ -111,6 +117,13 @@ void AppState::saveState(MainComponent& mainComponent)
 
     auto* presetStateXml = sessionXml->createNewChildElement(SessionIds::ACTIVE_PRESET);
     presetStateXml->setAttribute(SessionIds::presetName, getCurrentPresetName());
+
+    // <<< MODIFIED: Save 5 quick preset assignments >>>
+    auto* quickPresetsXml = sessionXml->createNewChildElement(SessionIds::QUICK_PRESETS);
+    for (int i = 0; i < quickPresetSlots.size(); ++i)
+    {
+        quickPresetsXml->setAttribute("slot" + juce::String(i), quickPresetSlots[i]);
+    }
 
     auto* openWindowsStateXml = sessionXml->createNewChildElement(SessionIds::OPEN_WINDOWS);
     auto vocalWindowsState = mainComponent.getVocalTrack().getOpenWindowsState();
@@ -154,6 +167,7 @@ void AppState::loadPostDeviceState(MainComponent& mainComponent)
 
     if (auto xml = juce::parseXML(sessionFile))
     {
+        // ... (loading routing state is unchanged) ...
         auto* routingStateXml = xml->getChildByName(SessionIds::ROUTING);
         if (routingStateXml != nullptr)
         {
@@ -161,25 +175,32 @@ void AppState::loadPostDeviceState(MainComponent& mainComponent)
             auto musicInputName = routingStateXml->getStringAttribute(SessionIds::MUSIC_INPUT);
             auto appOutputName = routingStateXml->getStringAttribute(SessionIds::APP_OUTPUT);
 
-            // Cập nhật AudioEngine (không đổi)
             mainComponent.getAudioEngine().setVocalInputChannelByName(vocalInputName);
             mainComponent.getAudioEngine().setMusicInputChannelByName(musicInputName);
             mainComponent.getAudioEngine().setSelectedOutputChannelsByName(appOutputName);
 
-            // Cập nhật giao diện thông qua các component mới
             if (auto* vocalSelector = mainComponent.getVocalTrack().getChannelSelector())
                 vocalSelector->setSelectedChannelByName(vocalInputName);
 
             if (auto* musicSelector = mainComponent.getMusicTrack().getChannelSelector())
                 musicSelector->setSelectedChannelByName(musicInputName);
 
-            // <<< SỬA: Cách cập nhật MenubarComponent >>>
             if (auto* menubar = mainComponent.getMenubarComponent())
                 if (auto* outputSelector = menubar->getOutputSelector())
                     outputSelector->setSelectedChannelByName(appOutputName);
         }
 
-        // ... (phần còn lại của hàm không đổi) ...
+        // <<< MODIFIED: Load 5 quick preset assignments >>>
+        auto* quickPresetsXml = xml->getChildByName(SessionIds::QUICK_PRESETS);
+        if (quickPresetsXml != nullptr)
+        {
+            for (int i = 0; i < quickPresetSlots.size(); ++i)
+            {
+                quickPresetSlots.set(i, quickPresetsXml->getStringAttribute("slot" + juce::String(i), {}));
+            }
+        }
+
+        // ... (loading active preset and open windows is unchanged) ...
         auto* presetStateXml = xml->getChildByName(SessionIds::ACTIVE_PRESET);
         if (presetStateXml != nullptr)
         {
@@ -258,4 +279,29 @@ void AppState::loadLockState(bool isLocked, const juce::String& passwordHash)
     systemLocked = isLocked;
     lockPasswordHash = passwordHash;
     sendChangeMessage();
+}
+
+// <<< ADDED: Implementation for Quick Preset Slot Management >>>
+void AppState::assignQuickPreset(int slotIndex, const juce::String& presetName)
+{
+    if (juce::isPositiveAndBelow(slotIndex, quickPresetSlots.size()))
+    {
+        if (quickPresetSlots[slotIndex] != presetName)
+        {
+            quickPresetSlots.set(slotIndex, presetName);
+            sendChangeMessage(); // Notify listeners (like PresetBarComponent)
+        }
+    }
+}
+
+juce::String AppState::getQuickPresetName(int slotIndex) const
+{
+    if (juce::isPositiveAndBelow(slotIndex, quickPresetSlots.size()))
+        return quickPresetSlots[slotIndex];
+    return {};
+}
+
+int AppState::getNumQuickPresetSlots() const
+{
+    return numQuickSlots;
 }

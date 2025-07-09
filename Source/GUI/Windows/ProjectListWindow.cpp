@@ -1,8 +1,8 @@
 #include "ProjectListWindow.h"
 #include "../../Components/Helpers.h"
-#include "../../AudioEngine/AudioEngine.h" // <<< THÊM: Include AudioEngine
+#include "../../AudioEngine/AudioEngine.h"
 
-// ... (Lớp ProjectItemComponent không thay đổi) ...
+// ... (ProjectItemComponent class is unchanged) ...
 class ProjectItemComponent : public juce::Component
 {
 public:
@@ -40,16 +40,15 @@ private:
 };
 
 
-// <<< SỬA: Cập nhật lớp ProjectListContentComponent >>>
 class ProjectListContentComponent : public juce::Component,
     public juce::ListBoxModel,
     public juce::Button::Listener
 {
 public:
     ProjectListContentComponent(const juce::String& subDir,
-        AudioEngine& engine, // Nhận AudioEngine
+        AudioEngine& engine,
         std::function<void(const juce::File&)> onProjectChosenCallback)
-        : audioEngine(engine), // Lưu trữ AudioEngine
+        : audioEngine(engine),
         onProjectChosen(onProjectChosenCallback)
     {
         projectDir = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory)
@@ -127,14 +126,11 @@ public:
                     juce::ModalCallbackFunction::create([this, projectFolder, projectName](int result) {
                         if (result == 1) // User clicked Yes
                         {
-                            // Kiểm tra nếu project đang xóa là project đang chạy
                             if (audioEngine.getProjectState().getProperty("name").toString() == projectName)
                             {
-                                // Dừng và giải phóng tài nguyên TRƯỚC KHI xóa
                                 audioEngine.stopLoadedProject();
                             }
 
-                            // Bây giờ mới xóa file một cách an toàn
                             if (projectFolder.deleteRecursively())
                                 findProjects();
                         }
@@ -144,7 +140,7 @@ public:
     }
 
 private:
-    AudioEngine& audioEngine; // Biến thành viên để giữ AudioEngine
+    AudioEngine& audioEngine;
     juce::File projectDir;
     juce::ListBox listBox;
     juce::Array<juce::File> projectJsonFiles;
@@ -153,7 +149,7 @@ private:
 };
 
 
-// <<< SỬA: Cập nhật hàm khởi tạo của Window >>>
+// <<< MODIFIED: Constructor now saves the on-close callback >>>
 ProjectListWindow::ProjectListWindow(const juce::String& recordingsSubDir,
     AudioEngine& engine,
     std::function<void(const juce::File&)> onProjectChosen,
@@ -166,17 +162,17 @@ ProjectListWindow::ProjectListWindow(const juce::String& recordingsSubDir,
     setUsingNativeTitleBar(true);
     setResizable(true, true);
     setResizeLimits(400, 300, 800, 1000);
-    // Truyền engine xuống cho content
     content = std::make_unique<ProjectListContentComponent>(recordingsSubDir, engine, onProjectChosen);
     setContentOwned(content.get(), true);
     centreWithSize(500, 600);
+    setVisible(true);
 }
 
 ProjectListWindow::~ProjectListWindow()
 {
 }
 
-// <<< MODIFIED: Calls the callback, no longer deletes itself >>>
+// <<< MODIFIED: Now calls the callback instead of deleting itself >>>
 void ProjectListWindow::closeButtonPressed()
 {
     if (onWindowClosedCallback)

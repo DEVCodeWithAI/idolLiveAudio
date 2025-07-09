@@ -10,7 +10,6 @@
 #include "MasterUtilityComponent.h"
 #include "../../Components/Helpers.h"
 #include "../Windows/QuickKeySettingsWindow.h" 
-// <<< FIX: Added the full header include for MasterPluginsWindow >>>
 #include "../Windows/MasterPluginsWindow.h" 
 #include "../../Data/AppState.h"
 
@@ -20,7 +19,6 @@ MasterUtilityComponent::MasterUtilityComponent(AudioEngine& engine)
     LanguageManager::getInstance().addChangeListener(this);
     AppState::getInstance().addChangeListener(this);
 
-    // <<< KHỞI TẠO COMPONENT MỚI >>>
     recorderComponent = std::make_unique<RecorderComponent>(audioEngine);
     addAndMakeVisible(*recorderComponent);
 
@@ -44,12 +42,10 @@ MasterUtilityComponent::MasterUtilityComponent(AudioEngine& engine)
         }
         };
 
-    // <<< MODIFIED: This now safely manages the window's lifecycle >>>
     quickKeySettingsButton.onClick = [this]
         {
             if (quickKeySettingsWindow == nullptr)
             {
-                // Create the window with a callback that resets this unique_ptr
                 quickKeySettingsWindow = std::make_unique<QuickKeySettingsWindow>(
                     [this] { quickKeySettingsWindow.reset(); }
                 );
@@ -110,12 +106,13 @@ void MasterUtilityComponent::paint(juce::Graphics& g)
     g.drawRect(getLocalBounds(), 1);
 }
 
+// <<< MODIFIED: Reworked layout logic for proper alignment >>>
 void MasterUtilityComponent::resized()
 {
     auto bounds = getLocalBounds().reduced(10);
 
     const int masterControlsHeight = 60;
-    const int managementHeight = 40; // Giảm chiều cao vùng này một chút
+    const int managementHeight = 40;
     const int recorderHeight = 80;
     const int padding = 10;
 
@@ -130,12 +127,15 @@ void MasterUtilityComponent::resized()
     soundboardComponent->setBounds(soundboardArea);
     recorderComponent->setBounds(recorderArea);
 
-    // <<< SỬA LOGIC LAYOUT Ở ĐÂY >>>
+    // --- Corrected and simplified layout logic for the management buttons ---
     const int gap = 10;
-    auto buttonBounds = managementArea;
-    masterPluginsButton.setBounds(buttonBounds.removeFromLeft(buttonBounds.getWidth() / 2 - gap / 2));
-    quickKeySettingsButton.setBounds(buttonBounds.withX(buttonBounds.getX() + gap));
+    auto leftButtonArea = managementArea.removeFromLeft(managementArea.getWidth() / 2 - gap / 2);
+    managementArea.removeFromLeft(gap); // The space between buttons
+    auto rightButtonArea = managementArea;
 
+    masterPluginsButton.setBounds(leftButtonArea);
+    quickKeySettingsButton.setBounds(rightButtonArea);
+    // --- End of corrected logic ---
 
     auto masterBounds = masterControlsArea;
     auto topRow = masterBounds.removeFromTop(masterBounds.getHeight() / 2);
@@ -178,6 +178,18 @@ void MasterUtilityComponent::restoreOpenWindows(const juce::ValueTree& state)
     juce::ignoreUnused(state);
 }
 
+void MasterUtilityComponent::closeAllPluginWindows()
+{
+    if (masterPluginsWindow != nullptr)
+    {
+        masterPluginsWindow.reset();
+    }
+    if (quickKeySettingsWindow != nullptr)
+    {
+        quickKeySettingsWindow.reset();
+    }
+}
+
 void MasterUtilityComponent::updateTexts()
 {
     auto& lang = LanguageManager::getInstance();
@@ -200,23 +212,8 @@ void MasterUtilityComponent::changeListenerCallback(juce::ChangeBroadcaster* sou
 {
     if (source == &LanguageManager::getInstance())
         updateTexts();
-    else if (source == &AppState::getInstance()) // <<< THÊM LOGIC
+    else if (source == &AppState::getInstance())
         updateLockState();
-}
-
-void MasterUtilityComponent::closeAllPluginWindows()
-{
-    // Nếu cửa sổ plugin kênh tổng đang mở, hãy đóng nó lại.
-    // Thao tác này sẽ kích hoạt destructor và dọn dẹp các cửa sổ editor bên trong.
-    if (masterPluginsWindow != nullptr)
-    {
-        masterPluginsWindow.reset();
-    }
-    // <<< ADDED: Also close the QuickKeySettingsWindow on shutdown >>>
-    if (quickKeySettingsWindow != nullptr)
-    {
-        quickKeySettingsWindow.reset();
-    }
 }
 
 void MasterUtilityComponent::updateLockState()
@@ -227,7 +224,6 @@ void MasterUtilityComponent::updateLockState()
     quickKeySettingsButton.setEnabled(!isLocked);
     masterVolumeSlider.setEnabled(!isLocked);
 
-    // Các thành phần biểu diễn vẫn hoạt động
     recorderComponent->setEnabled(true);
     soundboardComponent->setEnabled(true);
     masterMuteButton.setEnabled(true);

@@ -7,6 +7,9 @@ class MainComponent;
 class AppState : public juce::ChangeBroadcaster
 {
 public:
+    // <<< ADDED: A constant for the number of slots >>>
+    static constexpr int numQuickSlots = 5;
+
     static AppState& getInstance();
 
     void setPresetDirty(bool dirty);
@@ -16,19 +19,10 @@ public:
     void markAsSaved(const juce::String& newName);
 
     // --- CÁC HÀM CHO TÍNH NĂNG KHÓA ---
-    /** Locks the system with a given password. The password should be plain text. */
     void setSystemLocked(bool shouldBeLocked, const juce::String& password = {});
-
-    /** Unlocks the system if the provided password is correct. */
     bool unlockSystem(const juce::String& passwordAttempt);
-
-    /** Checks if the system is currently locked. */
     bool isSystemLocked() const;
-
-    /** Returns the MD5 hash of the current lock password. */
     juce::String getPasswordHash() const;
-
-    /** Loads lock state from a preset file. */
     void loadLockState(bool isLocked, const juce::String& passwordHash);
 
 
@@ -38,6 +32,14 @@ public:
     void loadPostDeviceState(MainComponent& mainComponent);
     juce::File getSessionFile() const;
 
+    // <<< MODIFIED: Updated comments and consistency >>>
+    /** Assigns a preset name to a quick load slot. */
+    void assignQuickPreset(int slotIndex, const juce::String& presetName);
+    /** Gets the name of the preset assigned to a slot. */
+    juce::String getQuickPresetName(int slotIndex) const;
+    /** Gets the number of available quick slots. */
+    int getNumQuickPresetSlots() const;
+
 private:
     AppState();
     ~AppState() override;
@@ -45,9 +47,10 @@ private:
     bool dirty = false;
     juce::String currentPresetName;
 
-    // --- BIẾN THÀNH VIÊN CHO TÍNH NĂNG KHÓA ---
     std::atomic<bool> systemLocked{ false };
     juce::String lockPasswordHash;
+
+    juce::StringArray quickPresetSlots;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AppState)
 };
