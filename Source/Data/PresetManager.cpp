@@ -1,3 +1,12 @@
+/*
+  ==============================================================================
+
+    PresetManager.cpp
+    (Fixed UI lock race condition on startup)
+
+  ==============================================================================
+*/
+
 #include "PresetManager.h"
 #include "../AudioEngine/AudioEngine.h"
 #include "../Data/AppState.h"
@@ -18,18 +27,14 @@ juce::File PresetManager::getPresetDirectory()
     return presetDir;
 }
 
-// <<< MODIFIED: Now saves the state of all 8 FX processors >>>
 void PresetManager::savePreset(AudioEngine& engine, const juce::File& file)
 {
     juce::ValueTree presetState(Identifiers::Preset);
     auto& appState = AppState::getInstance();
 
     // --- LƯU TRẠNG THÁI KHÓA ---
-    // Lấy trạng thái khóa và mật khẩu đã hash từ AppState
     bool isLocked = appState.isSystemLocked();
-    juce::String passwordHash = appState.getPasswordHash(); // Cần thêm hàm này vào AppState
-
-    // Đặt các thuộc tính vào ValueTree
+    juce::String passwordHash = appState.getPasswordHash();
     presetState.setProperty(Identifiers::lockState, isLocked, nullptr);
     if (isLocked)
     {
@@ -41,7 +46,6 @@ void PresetManager::savePreset(AudioEngine& engine, const juce::File& file)
     presetState.addChild(engine.getMusicProcessor().getState(), -1, nullptr);
     presetState.addChild(engine.getMasterProcessor().getState(), -1, nullptr);
 
-    // Lưu các FX processor
     for (int i = 0; i < 4; ++i)
     {
         if (auto* vocalFx = engine.getFxProcessorForVocal(i))
@@ -50,14 +54,13 @@ void PresetManager::savePreset(AudioEngine& engine, const juce::File& file)
             presetState.addChild(musicFx->getState(), -1, nullptr);
     }
 
-    // Ghi ValueTree ra file XML
     if (auto xml = std::unique_ptr<juce::XmlElement>(presetState.createXml()))
     {
         xml->writeTo(file, {});
     }
 }
 
-// <<< MODIFIED: Now loads the state of all 8 FX processors >>>
+
 void PresetManager::loadPreset(AudioEngine& engine, const juce::File& file)
 {
     if (!file.existsAsFile())
@@ -75,16 +78,7 @@ void PresetManager::loadPreset(AudioEngine& engine, const juce::File& file)
         {
             auto& appState = AppState::getInstance();
 
-            // --- NẠP TRẠNG THÁI KHÓA ---
-            // Đọc trạng thái và hash từ file preset
-            bool isLocked = presetState.getProperty(Identifiers::lockState, false);
-            juce::String passwordHash = presetState.getProperty(Identifiers::lockPasswordHash, "");
-
-            // Cập nhật trạng thái khóa vào AppState
-            appState.loadLockState(isLocked, passwordHash); // Cần thêm hàm này vào AppState
-
-
-            // --- NẠP CÁC PROCESSOR ---
+            // --- NẠP CÁC PROCESSOR TRƯỚC ---
             auto vocalState = presetState.getChildWithName(Identifiers::VocalProcessorState);
             if (vocalState.isValid())
                 engine.getVocalProcessor().setState(vocalState);
@@ -97,7 +91,6 @@ void PresetManager::loadPreset(AudioEngine& engine, const juce::File& file)
             if (masterState.isValid())
                 engine.getMasterProcessor().setState(masterState);
 
-            // Nạp các FX processor
             const juce::Identifier fxIds[] = {
                 Identifiers::VocalFx1State, Identifiers::VocalFx2State, Identifiers::VocalFx3State, Identifiers::VocalFx4State,
                 Identifiers::MusicFx1State, Identifiers::MusicFx2State, Identifiers::MusicFx3State, Identifiers::MusicFx4State
@@ -115,6 +108,12 @@ void PresetManager::loadPreset(AudioEngine& engine, const juce::File& file)
                     if (auto* proc = engine.getFxProcessorForMusic(i))
                         proc->setState(musicFxState);
             }
+
+            // --- FIX: NẠP TRẠNG THÁI KHÓA SAU CÙNG ---
+            // Điều này đảm bảo UI đã cập nhật trước khi bị vô hiệu hóa.
+            bool isLocked = presetState.getProperty(Identifiers::lockState, false);
+            juce::String passwordHash = presetState.getProperty(Identifiers::lockPasswordHash, "");
+            appState.loadLockState(isLocked, passwordHash);
         }
     }
     else
@@ -130,7 +129,6 @@ void PresetManager::deletePreset(const juce::String& presetName)
     {
         if (presetFile.deleteFile())
         {
-            // Notify listeners that the list of presets has changed
             sendChangeMessage();
         }
     }

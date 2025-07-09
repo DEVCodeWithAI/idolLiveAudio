@@ -2,7 +2,7 @@
   ==============================================================================
 
     PresetBarComponent.cpp
-    (Layout refined to align with main columns)
+    (Fixed: Re-sync UI selectors after preset load)
 
   ==============================================================================
 */
@@ -17,6 +17,7 @@
 #include "../MainComponent/MainComponent.h"
 #include "TrackComponent.h"
 #include "MasterUtilityComponent.h"
+#include "MenubarComponent.h" // <<< ADDED INCLUDE
 
 
 // ==============================================================================
@@ -148,14 +149,12 @@ void PresetBarComponent::resized()
     // --- 3. Define the area for the quick slots using the calculated alignment line ---
     auto quickSlotsArea = bounds;
 
-    // <<< FIX IS HERE: Convert parent's X coordinate to local and remove incorrect padding subtraction >>>
     quickSlotsArea.setRight(this->getLocalPoint(nullptr, juce::Point<int>{ verticalAlignmentLineX, 0 }).getX());
 
     // --- 4. Layout the label and the 5 slots inside this newly defined area ---
     quickChoiceLabel.setBounds(quickSlotsArea.removeFromLeft(100));
     quickSlotsArea.removeFromLeft(10);
 
-    // <<< CHANGE: Increased button width from 120 to 130 >>>
     const int buttonWidth = 140;
     const int buttonGap = 4;
     for (const auto& slot : quickLoadSlots)
@@ -303,7 +302,6 @@ void PresetBarComponent::loadQuickPreset(int slotIndex)
 
 void PresetBarComponent::performLoadTask(const juce::String& presetName)
 {
-    // Logic remains the same
     if (presetName.isEmpty()) return;
 
     if (auto* mainComp = findParentComponentOfClass<MainComponent>())
@@ -319,6 +317,25 @@ void PresetBarComponent::performLoadTask(const juce::String& presetName)
         {
             presetManager.loadPreset(audioEngine, presetFile);
             AppState::getInstance().markAsSaved(presetName);
+
+            // === FIX: RE-SYNC CHANNEL SELECTORS AFTER PRESET LOAD ===
+            juce::MessageManager::callAsync([this, mainComp]()
+                {
+                    auto vocalInputName = audioEngine.getVocalInputChannelName();
+                    auto musicInputName = audioEngine.getMusicInputChannelName();
+                    auto appOutputName = audioEngine.getSelectedOutputChannelPairName();
+
+                    if (auto* vocalSelector = mainComp->getVocalTrack().getChannelSelector())
+                        vocalSelector->setSelectedChannelByName(vocalInputName);
+
+                    if (auto* musicSelector = mainComp->getMusicTrack().getChannelSelector())
+                        musicSelector->setSelectedChannelByName(musicInputName);
+
+                    if (auto* menubar = mainComp->getMenubarComponent())
+                        if (auto* outputSelector = menubar->getOutputSelector())
+                            outputSelector->setSelectedChannelByName(appOutputName);
+                });
+            // === END OF FIX ===
         }
     }
 }
