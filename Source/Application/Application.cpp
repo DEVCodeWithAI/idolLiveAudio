@@ -136,8 +136,6 @@ void idolLiveAudioApplication::initialise(const juce::String& commandLine)
                     deviceSettingsXml->setAttribute("deviceType", customSetup->getStringAttribute("deviceType"));
                     deviceSettingsXml->setAttribute("audioInputDeviceName", customSetup->getStringAttribute("inputDevice"));
                     deviceSettingsXml->setAttribute("audioOutputDeviceName", customSetup->getStringAttribute("outputDevice"));
-                    deviceSettingsXml->setAttribute("audioSampleRate", customSetup->getDoubleAttribute("sampleRate"));
-                    deviceSettingsXml->setAttribute("audioBufferBufferSize", customSetup->getIntAttribute("bufferSize"));
                 }
             }
         }

@@ -14,6 +14,7 @@ class MasterUtilityComponent;
 class PluginManagementComponent;
 class StatusBarComponent;
 class ProjectManagerComponent;
+class BeatManagerComponent;
 
 class MainComponent : public juce::Component,
     public juce::ChangeListener,
@@ -56,7 +57,16 @@ public:
 
 
 private:
+    class GlassPane;
+
     void reloadHotkeysFromSlots();
+
+    void setBeatManagerExpanded(bool shouldBeExpanded);
+
+    juce::ComponentAnimator animator;
+    bool isBeatManagerExpanded = false;
+
+    std::unique_ptr<GlassPane> glassPane;
 
     std::unique_ptr<juce::AudioDeviceManager> deviceManager;
     AudioEngine audioEngine;
@@ -69,6 +79,7 @@ private:
     std::unique_ptr<PresetBarComponent> presetBar;
     std::unique_ptr<TrackComponent> vocalTrack;
     std::unique_ptr<TrackComponent> musicTrack;
+    std::unique_ptr<BeatManagerComponent> beatManager;
     std::unique_ptr<MasterUtilityComponent> masterUtilityColumn;
     std::unique_ptr<PluginManagementComponent> pluginManagement;
     std::unique_ptr<StatusBarComponent> statusBar;

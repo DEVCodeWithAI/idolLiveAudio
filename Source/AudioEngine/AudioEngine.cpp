@@ -45,6 +45,12 @@ void AudioEngine::audioDeviceAboutToStart(juce::AudioIODevice* device)
     currentSampleRate = device->getCurrentSampleRate();
     currentBlockSize = device->getCurrentBufferSizeSamples();
 
+    stableSampleRate = currentSampleRate;
+    stableBlockSize = currentBlockSize;
+
+    DBG("AudioEngine started with stable settings: "
+        << stableSampleRate << " Hz, " << stableBlockSize << " samples.");
+
     juce::dsp::ProcessSpec stereoSpec{ currentSampleRate, static_cast<uint32_t>(currentBlockSize), 2 };
 
     vocalProcessor.prepare(stereoSpec);

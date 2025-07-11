@@ -41,6 +41,8 @@ public:
     int getNumQuickPresetSlots() const;
 
 private:
+    void loadPresetAndWindows(MainComponent& mainComponent);
+
     AppState();
     ~AppState() override;
 

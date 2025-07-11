@@ -13,6 +13,7 @@
 #include "../Layout/MasterUtilityComponent.h"
 #include "../Layout/PluginManagementComponent.h"
 #include "../Layout/StatusBarComponent.h"
+#include "../Layout/BeatManagerComponent.h"
 #include "../../Data/SoundboardManager.h"
 #include "../../AudioEngine/SoundPlayer.h"
 #include "../../Application/Application.h"
@@ -23,6 +24,25 @@
 #if JUCE_WINDOWS && JUCE_ASIO
 #include <juce_audio_devices/juce_audio_devices.h>
 #endif
+
+class MainComponent::GlassPane : public juce::Component
+{
+public:
+    GlassPane(std::function<void()> callbackOnClick)
+        : onClick(std::move(callbackOnClick)) {
+    }
+
+    void mouseDown(const juce::MouseEvent& event) override
+    {
+        juce::ignoreUnused(event);
+
+        if (onClick)
+            onClick();
+    }
+
+private:
+    std::function<void()> onClick;
+};
 
 MainComponent::MainComponent()
     : deviceManager(std::make_unique<juce::AudioDeviceManager>()),
@@ -49,22 +69,13 @@ MainComponent::MainComponent()
             // Now it's safe to load the rest of the session state.
             AppState::getInstance().loadPostDeviceState(*this);
         };
-        
-    // <<< THÊM KHỞI TẠO COMPONENT MỚI >>>
+
     projectManager = std::make_unique<ProjectManagerComponent>(audioEngine);
-
     menubar = std::make_unique<MenubarComponent>(*deviceManager, audioEngine);
     presetBar = std::make_unique<PresetBarComponent>(audioEngine);
     vocalTrack = std::make_unique<TrackComponent>("tracks.vocal", juce::Colour(0xff60a5fa), TrackComponent::ChannelType::Vocal);
     musicTrack = std::make_unique<TrackComponent>("tracks.music", juce::Colour(0xff4ade80), TrackComponent::ChannelType::Music);
-    masterUtilityColumn = std::make_unique<MasterUtilityComponent>(audioEngine);
-    pluginManagement = std::make_unique<PluginManagementComponent>();
-    statusBar = std::make_unique<StatusBarComponent>();
-
-    menubar = std::make_unique<MenubarComponent>(*deviceManager, audioEngine);
-    presetBar = std::make_unique<PresetBarComponent>(audioEngine);
-    vocalTrack = std::make_unique<TrackComponent>("tracks.vocal", juce::Colour(0xff60a5fa), TrackComponent::ChannelType::Vocal);
-    musicTrack = std::make_unique<TrackComponent>("tracks.music", juce::Colour(0xff4ade80), TrackComponent::ChannelType::Music);
+    beatManager = std::make_unique<BeatManagerComponent>();
     masterUtilityColumn = std::make_unique<MasterUtilityComponent>(audioEngine);
     pluginManagement = std::make_unique<PluginManagementComponent>();
     statusBar = std::make_unique<StatusBarComponent>();
@@ -74,9 +85,13 @@ MainComponent::MainComponent()
     addAndMakeVisible(*presetBar);
     addAndMakeVisible(*vocalTrack);
     addAndMakeVisible(*musicTrack);
+    addAndMakeVisible(*beatManager);
     addAndMakeVisible(*masterUtilityColumn);
     addAndMakeVisible(*pluginManagement);
     addAndMakeVisible(*statusBar);
+
+    beatManager->onWantsToExpand = [this] { setBeatManagerExpanded(true); };
+    beatManager->onBeatPlayed = [this] { setBeatManagerExpanded(false); };
 
     audioEngine.linkTrackComponents(*vocalTrack, *musicTrack);
     vocalTrack->setAudioEngine(&audioEngine, *deviceManager);
@@ -276,7 +291,7 @@ void MainComponent::resized()
     auto totalBounds = getLocalBounds();
     const int padding = 5;
 
-    // --- Các thanh trên cùng và dưới cùng vẫn giữ nguyên ---
+    // Các thanh trên cùng và dưới cùng không đổi
     auto menubarArea = totalBounds.removeFromTop(50);
     auto presetBarArea = totalBounds.removeFromTop(50);
     auto statusBarArea = totalBounds.removeFromBottom(40);
@@ -285,43 +300,33 @@ void MainComponent::resized()
     if (presetBar) presetBar->setBounds(presetBarArea.reduced(padding, 0));
     if (statusBar) statusBar->setBounds(statusBarArea.reduced(padding, 0));
 
-    // Vùng làm việc chính còn lại
+    // Vùng làm việc chính
     auto mainArea = totalBounds.reduced(padding, 0);
 
-    // --- Bắt đầu chia layout mới ---
-
-    // 1. Chia mainArea thành 2 cột: Cột Trái (cho Tracks) và Cột Phải (cho Master)
-    auto rightColumn = mainArea.removeFromRight(mainArea.getWidth() / 3);
-    mainArea.removeFromRight(padding); // Khoảng cách giữa 2 cột
+    // Cột Trái không đổi
+    auto rightColumnArea = mainArea.removeFromRight(mainArea.getWidth() / 3);
+    mainArea.removeFromRight(padding);
     auto leftColumn = mainArea;
 
-    // 2. Đặt vị trí cho Cột Phải
-    if (masterUtilityColumn)
-        masterUtilityColumn->setBounds(rightColumn);
-
-    // 3. Xử lý layout cho Cột Trái
+    // Layout Cột Trái (không thay đổi)
     const int projectManagerHeight = 60;
     const int pluginManagementHeight = 60;
-
-    // Lấy vùng cho Project Manager từ trên cùng của Cột Trái
     auto projectManagerArea = leftColumn.removeFromTop(projectManagerHeight);
     leftColumn.removeFromTop(padding);
-
-    // Lấy vùng cho Plugin Management từ dưới cùng của Cột Trái
     auto pluginManagementArea = leftColumn.removeFromBottom(pluginManagementHeight);
     leftColumn.removeFromBottom(padding);
-
-    // Phần còn lại của Cột Trái dành cho 2 Track Component
     auto tracksArea = leftColumn;
-
-    // Đặt vị trí cho Project Manager và Plugin Management
     if (projectManager) projectManager->setBounds(projectManagerArea);
     if (pluginManagement) pluginManagement->setBounds(pluginManagementArea);
-
-    // Chia đôi vùng tracksArea cho Vocal và Music
     if (vocalTrack) vocalTrack->setBounds(tracksArea.removeFromLeft(tracksArea.getWidth() / 2));
     tracksArea.removeFromLeft(padding);
     if (musicTrack) musicTrack->setBounds(tracksArea);
+
+    // <<< SỬA: Layout ban đầu cho Cột Phải (trạng thái thu gọn) >>>
+    const int beatManagerCompactHeight = 90; // Chiều cao khi thu gọn
+    beatManager->setBounds(rightColumnArea.removeFromTop(beatManagerCompactHeight));
+    rightColumnArea.removeFromTop(padding);
+    masterUtilityColumn->setBounds(rightColumnArea);
 }
 
 void MainComponent::timerCallback()
@@ -346,4 +351,56 @@ void MainComponent::timerCallback()
         if (statusBar != nullptr)
             statusBar->updateStatus(0.0, 0.0, 0.0);
     }
+}
+
+// <<< THÊM HÀM MỚI NÀY VÀO FILE: Trái tim của cơ chế animation >>>
+void MainComponent::setBeatManagerExpanded(bool shouldBeExpanded)
+{
+    if (shouldBeExpanded == isBeatManagerExpanded)
+        return;
+
+    isBeatManagerExpanded = shouldBeExpanded;
+
+    if (shouldBeExpanded)
+    {
+        // Khi MỞ RỘNG: tạo và hiển thị "tấm kính"
+        glassPane = std::make_unique<GlassPane>([this] { setBeatManagerExpanded(false); });
+        addAndMakeVisible(*glassPane);
+        glassPane->setBounds(getLocalBounds());
+
+        // Đưa BeatManager lên phía trước để nó không bị "tấm kính" che mất
+        beatManager->toFront(false);
+    }
+    else
+    {
+        // Khi THU GỌN: hủy bỏ "tấm kính"
+        glassPane.reset();
+    }
+
+    // Phần animation còn lại giữ nguyên
+    auto rightColumnArea = masterUtilityColumn->getBounds().getUnion(beatManager->getBounds());
+    const int padding = 5;
+    const int beatManagerCompactHeight = 90;
+    const int beatManagerExpandedHeight = 640;
+
+    juce::Rectangle<int> beatManagerTargetBounds;
+    juce::Rectangle<int> masterUtilityTargetBounds;
+
+    if (shouldBeExpanded)
+    {
+        beatManagerTargetBounds = rightColumnArea.removeFromTop(beatManagerExpandedHeight);
+        rightColumnArea.removeFromTop(padding);
+        masterUtilityTargetBounds = rightColumnArea;
+    }
+    else
+    {
+        this->grabKeyboardFocus();
+        beatManagerTargetBounds = rightColumnArea.removeFromTop(beatManagerCompactHeight);
+        rightColumnArea.removeFromTop(padding);
+        masterUtilityTargetBounds = rightColumnArea;
+    }
+
+    const int animationTimeMs = 300;
+    animator.animateComponent(beatManager.get(), beatManagerTargetBounds, 1.0f, animationTimeMs, false, 0.0, 0.0);
+    animator.animateComponent(masterUtilityColumn.get(), masterUtilityTargetBounds, 1.0f, animationTimeMs, false, 0.0, 0.0);
 }

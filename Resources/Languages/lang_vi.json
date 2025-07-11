@@ -41,7 +41,7 @@
         "pleaseSelectDevice": "Vui lòng chọn thiết bị âm thanh",
         "fxSends": "GỬI HIỆU ỨNG"
     },
-	"trackPlayer": {
+    "trackPlayer": {
         "title": "TRÌNH PHÁT",
         "rec": "THU",
         "play": "PHÁT",
@@ -96,7 +96,7 @@
         "saveButton": "Lưu với tên mới...",
         "dontSaveButton": "Không lưu",
         "cancelButton": "Hủy",
-		"notReadyTitle": "Tính Năng Chưa Sẵn Sàng",
+        "notReadyTitle": "Tính Năng Chưa Sẵn Sàng",
         "featureNotReadyMessage": "Tính năng này sẽ được triển khai ở bước tiếp theo."
     },
     "pluginManagerWindow": {
@@ -123,6 +123,18 @@
         "cancel": "Hủy",
         "yes": "Đồng ý",
         "no": "Không"
+    },
+    "beatManager": {
+        "title": "Beat Của Tôi",
+        "searchLabel": "Tìm kiếm:",
+        "searchButton": "Tìm",
+        "openFolderButton": "Mở Thư Mục",
+        "rescanButton": "Quét Lại",
+        "playButton": "Phát",
+        "fileNotFoundTitle": "Không Tìm Thấy Tệp",
+        "fileNotFoundMessage": "Không thể tìm thấy tệp beat đã chọn:",
+        "changeFolderButton": "Đổi Thư Mục",
+        "selectFolderTitle": "Chọn Thư Mục Beat"
     },
     "masterUtility": {
         "masterPlugins": "Plugin Kênh Tổng",
@@ -160,8 +172,8 @@
         "copyButton": "Sao chép Báo cáo"
     },
     "projectManager": {
-		"loaded": "Project đang dùng:",
-		"noProjectLoaded": "Chưa nạp Project",
+        "loaded": "Project đang dùng:",
+        "noProjectLoaded": "Chưa nạp Project",
         "record": "Thu Âm Project",
         "manage": "Quản Lý Project",
         "recording": "Đang Thu...",
@@ -185,11 +197,11 @@
         "deleteConfirmTitle": "Xác Nhận Xóa",
         "deleteConfirmMessage": "Bạn có chắc chắn muốn xóa vĩnh viễn project '{{projectName}}' và toàn bộ các file audio bên trong không?"
     },
-	"fxChain": {
+    "fxChain": {
         "send": "Gửi đi:",
         "return": "Nhận về:"
     },
-	"lock": {
+    "lock": {
         "unlockTitle": "Mở khóa Hệ thống",
         "unlockMessage": "Nhập mật khẩu để mở khóa.",
         "lockTitle": "Khóa Hệ thống",

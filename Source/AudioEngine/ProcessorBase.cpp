@@ -19,7 +19,7 @@ namespace IDs
     const juce::Identifier uid("uid");
     const juce::Identifier state("state");
     const juce::Identifier bypassed("bypassed");
-    
+
     const juce::Identifier sendLevel("sendLevel");
     const juce::Identifier returnLevel("returnLevel");
 }
@@ -81,7 +81,7 @@ void ProcessorBase::prepare(const juce::dsp::ProcessSpec& spec)
     reset();
 }
 
-// <<< MODIFIED: setState now loads send/return levels >>>
+// <<< MODIFIED: Replaced sleep() with a more robust suspend/resume logic >>>
 void ProcessorBase::setState(const juce::ValueTree& newState)
 {
     const juce::ScopedLock sl(pluginLock);
@@ -100,7 +100,11 @@ void ProcessorBase::setState(const juce::ValueTree& newState)
     pluginBypassState.clear();
 
     juce::ValueTree pluginChainState = newState.getChildWithName(IDs::PLUGIN_CHAIN);
-    if (!pluginChainState.isValid()) return;
+    if (!pluginChainState.isValid())
+    {
+        sendChangeMessage(); // Gửi thông báo để UI cập nhật dù không có plugin
+        return;
+    }
 
     for (int i = 0; i < pluginChainState.getNumChildren(); ++i)
     {
@@ -123,14 +127,21 @@ void ProcessorBase::setState(const juce::ValueTree& newState)
             }
         }
 
-        if (!found) continue;
+        if (!found)
+        {
+            DBG("Plugin with UID " + juce::String(uidToFind) + " not found in known plugins list. Skipping.");
+            continue;
+        }
 
+        DBG("Loading plugin " + juce::String(i + 1) + "/" + juce::String(pluginChainState.getNumChildren()) + ": " + desc.name);
         if (auto instance = pluginManager.createPluginInstance(desc, processSpec))
         {
-            // <<< FIX: REMOVED ALL I/O NEGOTIATION LOGIC >>>
-            // We just prepare the plugin and then set its internal state.
+            // <<< LOGIC MỚI: Tạm dừng plugin trước khi cấu hình >>>
+            instance->suspendProcessing(true);
+
             instance->prepareToPlay(processSpec.sampleRate, (int)processSpec.maximumBlockSize);
 
+            DBG("  - Restoring state for: " + instance->getName());
             try
             {
                 auto base64State = pluginState.getProperty(IDs::state).toString();
@@ -140,32 +151,34 @@ void ProcessorBase::setState(const juce::ValueTree& newState)
             }
             catch (...)
             {
-                DBG("CRITICAL: Plugin '" << instance->getName() << "' threw an exception while restoring state. Skipping this plugin.");
-                continue;
+                DBG("  - CRITICAL: Plugin '" << instance->getName() << "' threw an exception while restoring state. Skipping this plugin.");
+                continue; // Bỏ qua plugin này và tiếp tục với plugin tiếp theo
             }
+
+            // <<< LOGIC MỚI: Kích hoạt lại plugin sau khi đã cấu hình xong >>>
+            instance->suspendProcessing(false);
 
             bool bypassed = pluginState.getProperty(IDs::bypassed, false);
             if (bypassed)
                 pluginBypassState.insert(pluginChain.size());
 
             pluginChain.add(std::move(instance));
+            DBG("  - Successfully loaded and added to chain.");
         }
     }
 
     sendChangeMessage();
 }
 
-// <<< MODIFIED: getState now saves send/return levels >>>
 juce::ValueTree ProcessorBase::getState() const
 {
     const juce::ScopedLock sl(pluginLock);
 
     juce::ValueTree state(processorId);
-    
-    // Save send/return levels
+
     state.setProperty(IDs::sendLevel, getSendLevel(), nullptr);
     state.setProperty(IDs::returnLevel, getReturnLevel(), nullptr);
-    
+
     juce::ValueTree pluginChainState(IDs::PLUGIN_CHAIN);
     state.addChild(pluginChainState, -1, nullptr);
 
@@ -266,9 +279,6 @@ void ProcessorBase::addPlugin(std::unique_ptr<juce::AudioPluginInstance> newPlug
 
     if (processSpec.sampleRate > 0)
     {
-        // <<< FIX: REMOVED ALL I/O NEGOTIATION LOGIC >>>
-        // We simply prepare the plugin and trust it to use its default layout.
-        // The process() method is already robust enough to handle channel differences.
         newPlugin->prepareToPlay(processSpec.sampleRate, (int)processSpec.maximumBlockSize);
         newPlugin->reset();
     }
@@ -298,11 +308,8 @@ void ProcessorBase::removePlugin(int index)
         try
         {
             DBG("Preparing to safely remove plugin: " << plugin->getName());
-
-            // Ngắt xử lý audio trước
             plugin->suspendProcessing(true);
 
-            // Nếu là Waves, chờ nhẹ cho thread nền shutdown
             const auto name = plugin->getName().toLowerCase();
             if (name.contains("waves") || name.contains("wave"))
             {
@@ -310,7 +317,6 @@ void ProcessorBase::removePlugin(int index)
                 juce::Thread::sleep(500);
             }
 
-            // Đóng tất cả editor liên quan (nếu có cơ chế quản lý ngoài FXChainWindow)
             if (plugin->hasEditor())
             {
                 if (auto* editor = plugin->getActiveEditor())
@@ -411,7 +417,6 @@ void ProcessorBase::setLevelSource(std::atomic<float>* newLevelSource)
     levelSource.store(newLevelSource);
 }
 
-// <<< ADDED: Implementation for Send/Return level controls >>>
 void ProcessorBase::setSendLevel(float newLevel0To1) { sendLevel.store(newLevel0To1); }
 float ProcessorBase::getSendLevel() const { return sendLevel.load(); }
 void ProcessorBase::setReturnLevel(float newLevel0To1) { returnLevel.store(newLevel0To1); }

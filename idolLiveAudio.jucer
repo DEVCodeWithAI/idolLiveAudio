@@ -8,8 +8,8 @@
   <MAINGROUP id="B708Sa" name="idolLiveAudio">
     <GROUP id="{AD963046-D105-7E97-82F8-04E24F432A02}" name="Resources">
       <GROUP id="{08105253-0E21-EFD1-B951-19A48B0626BC}" name="Languages">
-        <FILE id="MOA2Yv" name="lang_en.json" compile="0" resource="1" file="Resources/Languages/lang_en.json"/>
-        <FILE id="aDC3m4" name="lang_vi.json" compile="0" resource="1" file="Resources/Languages/lang_vi.json"/>
+        <FILE id="NAApEB" name="lang_en.json" compile="0" resource="1" file="Resources/Languages/lang_en.json"/>
+        <FILE id="Upuzkn" name="lang_vi.json" compile="0" resource="1" file="Resources/Languages/lang_vi.json"/>
       </GROUP>
       <FILE id="etZReR" name="icon_128x128.png" compile="0" resource="1"
             file="Resources/icon_128x128.png"/>
@@ -92,6 +92,10 @@
                 file="Source/GUI/Windows/SplashScreenComponent.h"/>
         </GROUP>
         <GROUP id="{6C197B64-1A21-9713-2B9C-5DFB7B26FAC4}" name="Layout">
+          <FILE id="npaMzJ" name="BeatManagerComponent.cpp" compile="1" resource="0"
+                file="Source/GUI/Layout/BeatManagerComponent.cpp"/>
+          <FILE id="wI9htr" name="BeatManagerComponent.h" compile="0" resource="0"
+                file="Source/GUI/Layout/BeatManagerComponent.h"/>
           <FILE id="EP2ESL" name="MasterUtilityComponent.cpp" compile="1" resource="0"
                 file="Source/GUI/Layout/MasterUtilityComponent.cpp"/>
           <FILE id="L6m8HA" name="MasterUtilityComponent.h" compile="0" resource="0"

@@ -87,6 +87,10 @@ public:
     TrackProcessor* getFxProcessorForVocal(int index);
     TrackProcessor* getFxProcessorForMusic(int index);
 
+    // Biến lấy (sampleRate, bufferSize)
+    double getStableSampleRate() const { return stableSampleRate; }
+    int getStableBlockSize() const { return stableBlockSize; }
+
 private:
     juce::AudioDeviceManager& deviceManager;
 
@@ -137,6 +141,10 @@ private:
     int currentBlockSize = 0;
     TrackComponent* vocalTrackComponent = nullptr;
     TrackComponent* musicTrackComponent = nullptr;
+
+    // Biến lưu tạm (sampleRate, bufferSize)
+    double stableSampleRate = 0.0;
+    int stableBlockSize = 0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AudioEngine)
 };

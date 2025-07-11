@@ -1,4 +1,4 @@
-﻿#include "AppState.h"
+#include "AppState.h"
 #include "Data/LanguageManager/LanguageManager.h"
 #include "../Data/PresetManager.h"
 #include "../GUI/MainComponent/MainComponent.h"
@@ -107,8 +107,6 @@ void AppState::saveState(MainComponent& mainComponent)
     deviceSetupXml->setAttribute("deviceType", deviceManager.getCurrentAudioDeviceType());
     deviceSetupXml->setAttribute("inputDevice", currentSetup.inputDeviceName);
     deviceSetupXml->setAttribute("outputDevice", currentSetup.outputDeviceName);
-    deviceSetupXml->setAttribute("sampleRate", currentSetup.sampleRate);
-    deviceSetupXml->setAttribute("bufferSize", currentSetup.bufferSize);
 
     auto* routingStateXml = sessionXml->createNewChildElement(SessionIds::ROUTING);
     routingStateXml->setAttribute(SessionIds::VOCAL_INPUT, audioEngine.getVocalInputChannelName());
@@ -152,8 +150,6 @@ bool AppState::loadAudioDeviceSetup(juce::AudioDeviceManager::AudioDeviceSetup& 
             loadedDeviceType = deviceSetupXml->getStringAttribute("deviceType");
             setupToFill.inputDeviceName = deviceSetupXml->getStringAttribute("inputDevice");
             setupToFill.outputDeviceName = deviceSetupXml->getStringAttribute("outputDevice");
-            setupToFill.sampleRate = deviceSetupXml->getDoubleAttribute("sampleRate");
-            setupToFill.bufferSize = deviceSetupXml->getIntAttribute("bufferSize");
             return true;
         }
     }
@@ -188,6 +184,11 @@ void AppState::loadPostDeviceState(MainComponent& mainComponent)
             if (auto* menubar = mainComponent.getMenubarComponent())
                 if (auto* outputSelector = menubar->getOutputSelector())
                     outputSelector->setSelectedChannelByName(appOutputName);
+
+            juce::Timer::callAfterDelay(150, [&, safeMainComp = juce::Component::SafePointer(&mainComponent)] {
+                if (safeMainComp)
+                    loadPresetAndWindows(*safeMainComp);
+                });
         }
 
         // <<< MODIFIED: Load 5 quick preset assignments >>>
@@ -212,6 +213,67 @@ void AppState::loadPostDeviceState(MainComponent& mainComponent)
                 auto* openWindowsXml = xml->getChildByName(SessionIds::OPEN_WINDOWS);
                 if (openWindowsXml != nullptr)
                 {
+                    auto openWindowsState = juce::ValueTree::fromXml(*openWindowsXml);
+                    if (openWindowsState.isValid())
+                    {
+                        juce::Timer::callAfterDelay(500, [&mainComponent, openWindowsState]() {
+                            if (openWindowsState.isValid())
+                            {
+                                auto vocalId = Identifiers::VocalProcessorState.toString();
+                                auto vocalWindows = openWindowsState.getChildWithProperty(WindowStateIds::processorId, vocalId);
+                                if (vocalWindows.isValid())
+                                    mainComponent.getVocalTrack().restoreOpenWindows(vocalWindows);
+
+                                auto musicId = Identifiers::MusicProcessorState.toString();
+                                auto musicWindows = openWindowsState.getChildWithProperty(WindowStateIds::processorId, musicId);
+                                if (musicWindows.isValid())
+                                    mainComponent.getMusicTrack().restoreOpenWindows(musicWindows);
+
+                                auto masterId = Identifiers::MasterProcessorState.toString();
+                                auto masterWindows = openWindowsState.getChildWithProperty(WindowStateIds::processorId, masterId);
+                                if (masterWindows.isValid())
+                                    mainComponent.getMasterUtilityComponent().restoreOpenWindows(masterWindows);
+                            }
+                            });
+                    }
+                }
+            }
+        }
+    }
+}
+
+void AppState::loadPresetAndWindows(MainComponent& mainComponent)
+{
+    auto sessionFile = getSessionFile();
+    if (!sessionFile.existsAsFile()) return;
+
+    if (auto xml = juce::parseXML(sessionFile))
+    {
+        // STAGE 2: Load quick presets, active preset, and restore windows
+
+        auto* quickPresetsXml = xml->getChildByName(SessionIds::QUICK_PRESETS);
+        if (quickPresetsXml != nullptr)
+        {
+            for (int i = 0; i < quickPresetSlots.size(); ++i)
+            {
+                quickPresetSlots.set(i, quickPresetsXml->getStringAttribute("slot" + juce::String(i), {}));
+            }
+        }
+
+        auto* presetStateXml = xml->getChildByName(SessionIds::ACTIVE_PRESET);
+        if (presetStateXml != nullptr)
+        {
+            auto presetToLoad = presetStateXml->getStringAttribute(SessionIds::presetName);
+            if (presetToLoad.isNotEmpty() && presetToLoad != LanguageManager::getInstance().get("presetbar.noPresetLoaded"))
+            {
+                // This call is now blocking and includes the per-plugin delay
+                mainComponent.getPresetBar().loadPresetByName(presetToLoad);
+
+                // The window restoration already has its own internal delay, so we can call it right after.
+                auto* openWindowsXml = xml->getChildByName(SessionIds::OPEN_WINDOWS);
+                if (openWindowsXml != nullptr)
+                {
+                    // ... (existing window restoration logic, which is already safe) ...
                     auto openWindowsState = juce::ValueTree::fromXml(*openWindowsXml);
                     if (openWindowsState.isValid())
                     {

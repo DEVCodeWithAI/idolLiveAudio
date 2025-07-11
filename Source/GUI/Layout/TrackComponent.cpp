@@ -409,7 +409,7 @@ void TrackComponent::toggleFxMute(int index, bool shouldBeMuted)
     if (fxProcessor != nullptr)
     {
         fxProcessor->setMuted(shouldBeMuted);
-        AppState::getInstance().setPresetDirty(true);
+        // AppState::getInstance().setPresetDirty(true);
     }
 }
 

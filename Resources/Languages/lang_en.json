@@ -41,7 +41,7 @@
         "pleaseSelectDevice": "Please select an audio device",
         "fxSends": "FX SENDS"
     },
-	"trackPlayer": {
+    "trackPlayer": {
         "title": "TRACK PLAYER",
         "rec": "REC",
         "play": "PLAY",
@@ -96,7 +96,7 @@
         "saveButton": "Save As...",
         "dontSaveButton": "Don't Save",
         "cancelButton": "Cancel",
-		"notReadyTitle": "Feature Not Ready",
+        "notReadyTitle": "Feature Not Ready",
         "featureNotReadyMessage": "This feature will be implemented in the next step."
     },
     "pluginManagerWindow": {
@@ -123,6 +123,18 @@
         "title": "Quick Key & Soundboard Settings",
         "yes": "Yes",
         "no": "No"
+    },
+    "beatManager": {
+        "title": "My Beats",
+        "searchLabel": "Search:",
+        "searchButton": "Search",
+        "openFolderButton": "Open Folder",
+        "rescanButton": "Rescan",
+        "playButton": "Play",
+        "fileNotFoundTitle": "File Not Found",
+        "fileNotFoundMessage": "The selected beat file could not be found:",
+        "changeFolderButton": "Change Folder",
+        "selectFolderTitle": "Select Beat Folder"
     },
     "masterUtility": {
         "masterPlugins": "Master Plugins",
@@ -160,8 +172,8 @@
         "copyButton": "Copy Report"
     },
     "projectManager": {
-		"loaded": "Project Loaded:",
-		"noProjectLoaded": "No Project Loaded",
+        "loaded": "Project Loaded:",
+        "noProjectLoaded": "No Project Loaded",
         "record": "Record Project",
         "manage": "Manage Projects",
         "recording": "Recording...",
@@ -178,7 +190,7 @@
         "completeTitle": "Scan Complete",
         "completeMessage": "Plugin scanning has finished."
     },
-	"projectListWindow": {
+    "projectListWindow": {
         "title": "Manage Projects",
         "play": "Play",
         "delete": "Delete",
@@ -189,7 +201,7 @@
         "send": "Send:",
         "return": "Return:"
     },
-	"lock": {
+    "lock": {
         "unlockTitle": "Unlock System",
         "unlockMessage": "Enter password to unlock.",
         "lockTitle": "Lock System",
