@@ -21,17 +21,35 @@
 
 ---
 
-## ✨ What's New in v1.1.0: Full Mini-DAW Functionality
+## ✨ What's New in v1.2.0: Beat Manager, UI Refresh & More
 
-Version 1.1.0 transforms idolLiveAudio from a simple plugin host into a powerful Mini-DAW with a complete recording and playback workflow.
+Version 1.2.0 builds on the Mini-DAW foundation, adding intelligent beat management, enhanced UI, and improved stability for live performance and creative workflows.
 
-* **Dedicated FX Chains**: Each track (Vocal and Music) now has 4 dedicated FX Send channels, allowing you to use effects like reverb and delay in parallel, just like in a professional DAW.
-* **Per-Track Player & Recorder**: Load any audio file (like a backing track) directly into a track to be processed by its plugin chain. Record a track's post-FX output to quickly capture a processed vocal take or an idea.
-* **Multi-Track Project System**:
-    * **Record Project (RAW)**: Simultaneously record the raw, unprocessed input from both the Vocal and Music tracks.
-    * **Manage Projects**: View, load, or delete your recorded projects.
-    * **Synchronized Playback**: Load a project, and both raw tracks will play back in perfect sync.
-* **Safety Lock System**: Prevent accidental changes during live performances by disabling core configuration controls.
+* **🎵 Beat Manager**:  
+  A brand-new beat browsing and search interface with smart animation.  
+  - Expand/collapse smoothly over the Soundboard area.  
+  - Instantly filter beats by name with auto-suggest.  
+  - Supports changing scan folder without affecting existing JSON indexes.
+
+* **🎧 Dedicated FX Chains**:  
+  Each track (Vocal & Music) has 4 FX Send slots for parallel reverb, delay, etc. — just like pro DAWs.
+
+* **🎙 Per-Track Player & Recorder**:  
+  Load audio files (e.g., backing tracks) directly into Vocal or Music tracks.  
+  Record post-FX audio instantly for polished takes or creative ideas.
+
+* **🧩 Multi-Track Project System**:
+    * **Record Project (RAW)** – Simultaneous raw recording from Vocal and Music tracks.
+    * **Manage Projects** – View, load, or delete multi-track sessions.
+    * **Synchronized Playback** – Both raw tracks play in perfect sync.
+
+* **🛡 Safety Lock System**:  
+  Lock key settings to avoid accidental changes during a performance.
+
+* **🧼 Bug Fixes & Improvements**:
+    - Fixed ASIO Link Pro conflict when switching Presets.
+    - Mute no longer prompts for saving Presets.
+    - UI updated for better clarity and cleaner layout.
 
 ---
 

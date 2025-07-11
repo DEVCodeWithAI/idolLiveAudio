@@ -21,17 +21,36 @@
 
 ---
 
-## ✨ Điểm nổi bật trong v1.1.0: Chức năng Mini-DAW hoàn chỉnh
+## ✨ Điểm nổi bật trong v1.2.0: Trình quản lý Beat, giao diện mới và cải tiến ổn định
 
-Phiên bản 1.1.0 biến idolLiveAudio từ một trình host plugin đơn giản thành một Mini-DAW mạnh mẽ với quy trình thu âm và phát lại hoàn chỉnh.
+Phiên bản 1.2.0 tiếp tục nâng cấp idolLiveAudio thành một Mini-DAW thông minh và linh hoạt hơn, phục vụ tối ưu cho biểu diễn live và sáng tạo cá nhân.
 
-* **FX Chains chuyên dụng**: Mỗi track (Vocal và Music) giờ đây có 4 kênh FX Send chuyên dụng, cho phép bạn sử dụng các hiệu ứng như reverb, delay song song như trong một DAW chuyên nghiệp.
-* **Player & Recorder trên từng Track**: Tải file âm thanh (nhạc nền, beat) trực tiếp vào một track để xử lý qua chuỗi plugin của track đó. Thu lại âm thanh đã qua xử lý (Post-FX) để nhanh chóng có được bản thu vocal hoặc một ý tưởng.
-* **Hệ thống Project đa rãnh**:
-    * **Record Project (RAW)**: Ghi âm đồng thời tín hiệu thô, chưa qua xử lý từ cả hai track Vocal và Music.
-    * **Quản lý Project**: Xem, tải hoặc xóa các project đã ghi.
-    * **Phát lại đồng bộ**: Tải một project và cả hai track RAW sẽ phát lại đồng bộ hoàn hảo.
-* **Hệ thống Khóa an toàn (Safety Lock)**: Ngăn chặn các thay đổi vô tình trong khi biểu diễn trực tiếp bằng cách vô hiệu hóa các điều khiển cấu hình cốt lõi.
+* **🎵 Trình quản lý Beat (Beat Manager)**  
+  Giao diện mới giúp duyệt và tìm kiếm beat nhanh chóng, mượt mà và hiện đại:  
+  - Tự động gợi ý khi nhập tên.  
+  - Animation trượt mở rộng/thu gọn mượt mà.  
+  - Có thể thay đổi thư mục quét beat mà không ảnh hưởng đến dữ liệu đã index (.json).
+
+* **🎧 FX Chains chuyên dụng**  
+  Mỗi track (Vocal & Music) có 4 kênh FX Send riêng biệt để sử dụng reverb, delay, v.v. theo kiểu song song như các DAW chuyên nghiệp.
+
+* **🎙 Trình phát và thu riêng từng track**  
+  Tải nhạc nền hoặc audio trực tiếp vào từng track và xử lý qua chuỗi plugin tương ứng.  
+  Thu lại đầu ra sau plugin (Post-FX) để nhanh chóng lưu ý tưởng hoặc vocal hoàn chỉnh.
+
+* **🧩 Hệ thống Project đa rãnh**  
+    * **Record Project (RAW)** – Ghi âm đồng thời tín hiệu gốc từ Vocal và Music.  
+    * **Quản lý Project** – Dễ dàng xem, tải hoặc xóa các bản ghi.  
+    * **Phát lại đồng bộ** – Phát lại cùng lúc hai track một cách hoàn hảo.
+
+* **🛡 Hệ thống Khóa an toàn (Safety Lock)**  
+  Ngăn thay đổi ngoài ý muốn trong lúc livestream bằng cách khóa các thiết lập quan trọng.
+
+* **🧼 Sửa lỗi & nâng cấp khác**  
+    - Sửa lỗi xung đột với ASIO Link Pro khi đổi Preset.  
+    - Nhấn Mute không còn hỏi lưu Preset.  
+    - Giao diện được cập nhật mới, rõ ràng và hiện đại hơn.
+
 
 ---
 
