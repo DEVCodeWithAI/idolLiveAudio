@@ -1,14 +1,82 @@
-﻿/*
-  ==============================================================================
-
-    QuickKeySettingsWindow.cpp
-    (UI Layout fine-tuned based on user feedback)
-
-  ==============================================================================
-*/
-
-#include "QuickKeySettingsWindow.h"
+﻿#include "QuickKeySettingsWindow.h"
 #include "../../Components/Helpers.h"
+#include "../../Application/Application.h"
+
+//==============================================================================
+// CÁC HÀM TRỢ GIÚP DỰA TRÊN Ý TƯỞNG CỦA BẠN
+//==============================================================================
+
+// Bước 1: Hàm dịch mã VK_ của Windows thành tên phím đọc được
+static juce::String getReadableKeyNameFromVK(int vkCode)
+{
+    switch (vkCode)
+    {
+    case VK_CONTROL: case VK_LCONTROL: case VK_RCONTROL: return "Ctrl";
+    case VK_SHIFT: case VK_LSHIFT: case VK_RSHIFT:       return "Shift";
+    case VK_MENU: case VK_LMENU: case VK_RMENU:          return "Alt";
+    case VK_LWIN: case VK_RWIN:                          return "Win";
+
+    case VK_RETURN: return "Enter";
+    case VK_ESCAPE: return "Esc";
+    case VK_SPACE:  return "Space";
+    case VK_BACK:   return "Backspace";
+    case VK_TAB:    return "Tab";
+    case VK_DELETE: return "Delete";
+
+    case VK_LEFT:   return "Left";
+    case VK_RIGHT:  return "Right";
+    case VK_UP:     return "Up";
+    case VK_DOWN:   return "Down";
+
+    case VK_F1: return "F1";
+    case VK_F2: return "F2";
+    case VK_F3: return "F3";
+    case VK_F4: return "F4";
+    case VK_F5: return "F5";
+    case VK_F6: return "F6";
+    case VK_F7: return "F7";
+    case VK_F8: return "F8";
+    case VK_F9: return "F9";
+    case VK_F10: return "F10";
+    case VK_F11: return "F11";
+    case VK_F12: return "F12";
+
+    default:
+        if ((vkCode >= 'A' && vkCode <= 'Z') || (vkCode >= '0' && vkCode <= '9'))
+            return juce::String::charToString((juce_wchar)vkCode);
+    }
+
+    return "[?]";
+}
+
+// Bước 2: Hàm định dạng KeyPress hoàn chỉnh
+static juce::String formatVKHotkeyText(const juce::KeyPress& key)
+{
+    if (!key.isValid())
+        return {};
+
+    juce::StringArray parts;
+    const auto mods = key.getModifiers();
+
+    if (mods.isCtrlDown())    parts.add("Ctrl");
+    if (mods.isShiftDown())   parts.add("Shift");
+    if (mods.isAltDown())     parts.add("Alt");
+
+    // trên Windows, Command key được map thành phím Windows
+    if (mods.isCommandDown()) parts.add("Win");
+
+    const int vkCode = key.getKeyCode();
+    juce::String mainKey = getReadableKeyNameFromVK(vkCode);
+
+    // Chỉ thêm tên phím chính nếu nó chưa có trong danh sách modifier
+    // Ví dụ: khi nhấn Ctrl, mainKey là "Ctrl", đã có trong parts, không thêm nữa.
+    // Khi nhấn Ctrl + S, mainKey là "S", không có trong parts, sẽ được thêm vào.
+    if (!parts.contains(mainKey))
+        parts.add(mainKey);
+
+    return parts.joinIntoString(" + ");
+}
+
 
 //==============================================================================
 // QuickKeySettingsContentComponent Implementation
@@ -16,7 +84,6 @@
 
 QuickKeySettingsContentComponent::QuickKeySettingsContentComponent()
 {
-    // Constructor logic remains the same.
     LanguageManager::getInstance().addChangeListener(this);
     getSharedSoundboardProfileManager().addChangeListener(this);
 
@@ -28,27 +95,59 @@ QuickKeySettingsContentComponent::QuickKeySettingsContentComponent()
         button->setRadioGroupId(1);
         button->setClickingTogglesState(true);
         const int index = i;
-        button->onClick = [this, index] { showDetailsForSlot(index); };
+        button->onClick = [this, index] {
+            cancelCaptureMode();
+            showDetailsForSlot(index);
+            slotGridButtons[index]->setToggleState(true, juce::sendNotification);
+            };
         addAndMakeVisible(button);
     }
 
     addAndMakeVisible(nameLabel);
     addAndMakeVisible(nameEditor);
     nameEditor.addListener(this);
+
     addAndMakeVisible(assignFileButton);
-    assignFileButton.addListener(this);
+    assignFileButton.onClick = [this] { chooseFileForSlot(selectedSlot); };
+
     addAndMakeVisible(setHotkeyButton);
-    setHotkeyButton.addListener(this);
+    setHotkeyButton.onClick = [this] { setHotkeyForSlot(selectedSlot); };
 
     addAndMakeVisible(saveButton);
-    saveButton.addListener(this);
-    addAndMakeVisible(cleanButton);
-    cleanButton.addListener(this);
-    addAndMakeVisible(importButton);
-    importButton.addListener(this);
-    addAndMakeVisible(exportButton);
-    exportButton.addListener(this);
+    saveButton.onClick = [this] { saveChanges(); };
 
+    addAndMakeVisible(cleanButton);
+    cleanButton.onClick = [this] {
+        auto& lang = LanguageManager::getInstance();
+        juce::AlertWindow::showOkCancelBox(juce::AlertWindow::QuestionIcon,
+            lang.get("alerts.cleanProfileConfirmTitle"), lang.get("alerts.cleanProfileConfirmMessage"),
+            lang.get("quickKeySettingsWindow.yes"), lang.get("quickKeySettingsWindow.no"), this,
+            juce::ModalCallbackFunction::create([this](int result) {
+                if (result == 1) getSharedSoundboardProfileManager().cleanProfile();
+                }));
+        };
+
+    addAndMakeVisible(importButton);
+    importButton.onClick = [this] {
+        auto fc = std::make_shared<juce::FileChooser>("Import Soundboard Profile", juce::File{}, "*.zip");
+        fc->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
+            [this, fc](const juce::FileChooser& chooser) {
+                if (!chooser.getResults().isEmpty())
+                    getSharedSoundboardProfileManager().importProfile(chooser.getResult());
+            });
+        };
+
+    addAndMakeVisible(exportButton);
+    exportButton.onClick = [this] {
+        auto fc = std::make_shared<juce::FileChooser>("Export Soundboard Profile", juce::File{}, "*.zip");
+        fc->launchAsync(juce::FileBrowserComponent::saveMode,
+            [this, fc](const juce::FileChooser& chooser) {
+                if (!chooser.getResults().isEmpty())
+                    getSharedSoundboardProfileManager().exportProfile(chooser.getResult());
+            });
+        };
+
+    startTimerHz(10);
     updateAllUITexts();
     showDetailsForSlot(0);
     slotGridButtons[0]->setToggleState(true, juce::sendNotification);
@@ -56,14 +155,25 @@ QuickKeySettingsContentComponent::QuickKeySettingsContentComponent()
 
 QuickKeySettingsContentComponent::~QuickKeySettingsContentComponent()
 {
-    // Destructor logic remains the same.
+    stopTimer();
+    cancelCaptureMode();
     LanguageManager::getInstance().removeChangeListener(this);
     getSharedSoundboardProfileManager().removeChangeListener(this);
 }
 
+void QuickKeySettingsContentComponent::timerCallback()
+{
+    if (isCapturingHotkey)
+    {
+        if (auto* topLevelComp = getTopLevelComponent())
+            if (auto* topLevelWin = dynamic_cast<juce::TopLevelWindow*>(topLevelComp))
+                if (!topLevelWin->isActiveWindow())
+                    cancelCaptureMode();
+    }
+}
+
 void QuickKeySettingsContentComponent::paint(juce::Graphics& g)
 {
-    // Paint logic remains the same.
     g.fillAll(getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
     g.setColour(juce::Colours::grey.withAlpha(0.5f));
     g.drawRoundedRectangle(editorGroupBounds.toFloat(), 5.0f, 1.0f);
@@ -73,13 +183,10 @@ void QuickKeySettingsContentComponent::paint(juce::Graphics& g)
 void QuickKeySettingsContentComponent::resized()
 {
     auto bounds = getLocalBounds().reduced(10);
-
-    // <<< CHANGE 1: Increase left panel width to make slot buttons more square-like >>>
     auto leftPanel = bounds.removeFromLeft(240);
     bounds.removeFromLeft(10);
     auto rightPanel = bounds;
 
-    // Layout left panel (grid buttons) with juce::Grid for tighter spacing
     juce::Grid grid;
     using Track = juce::Grid::TrackInfo;
     using Fr = juce::Grid::Fr;
@@ -93,13 +200,10 @@ void QuickKeySettingsContentComponent::resized()
 
     grid.performLayout(leftPanel);
 
-    // Layout right panel
-    // <<< CHANGE 2: Increase height of the bottom profile management group >>>
     profileGroupBounds = rightPanel.removeFromBottom(130);
     rightPanel.removeFromBottom(10);
     editorGroupBounds = rightPanel;
 
-    // Layout Editor Group
     auto editorContentBounds = editorGroupBounds.reduced(15);
     const int rowHeight = 35;
     const int rowGap = 15;
@@ -114,7 +218,6 @@ void QuickKeySettingsContentComponent::resized()
     editorContentBounds.removeFromTop(rowGap);
     setHotkeyButton.setBounds(editorContentBounds.removeFromTop(rowHeight));
 
-    // Layout Profile Buttons Group
     juce::Grid profileGrid;
     profileGrid.templateRows = { Track(Fr(1)), Track(Fr(1)) };
     profileGrid.templateColumns = { Track(Fr(1)), Track(Fr(1)) };
@@ -128,65 +231,13 @@ void QuickKeySettingsContentComponent::resized()
     profileGrid.performLayout(profileGroupBounds.reduced(15));
 }
 
-
 void QuickKeySettingsContentComponent::buttonClicked(juce::Button* button)
 {
-    // This function's logic remains correct.
-    auto& profileManager = getSharedSoundboardProfileManager();
-    if (button == &assignFileButton) { /* ... */ }
-    else if (button == &setHotkeyButton) { /* ... */ }
-    // ... same as before
-    if (button == &assignFileButton)
-    {
-        chooseFileForSlot(selectedSlot);
-    }
-    else if (button == &setHotkeyButton)
-    {
-        setHotkeyForSlot(selectedSlot);
-    }
-    else if (button == &saveButton)
-    {
-        saveChanges();
-    }
-    else if (button == &cleanButton)
-    {
-        auto& lang = LanguageManager::getInstance();
-        juce::AlertWindow::showOkCancelBox(
-            juce::AlertWindow::QuestionIcon,
-            lang.get("alerts.cleanProfileConfirmTitle"),
-            lang.get("alerts.cleanProfileConfirmMessage"),
-            lang.get("quickKeySettingsWindow.yes"),
-            lang.get("quickKeySettingsWindow.no"),
-            this,
-            juce::ModalCallbackFunction::create([&profileManager](int result) {
-                if (result == 1)
-                    profileManager.cleanProfile();
-                })
-        );
-    }
-    else if (button == &importButton)
-    {
-        auto fc = std::make_shared<juce::FileChooser>("Import Soundboard Profile", juce::File{}, "*.zip");
-        fc->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
-            [this, fc, &profileManager](const juce::FileChooser& chooser) {
-                if (!chooser.getResults().isEmpty())
-                    profileManager.importProfile(chooser.getResult());
-            });
-    }
-    else if (button == &exportButton)
-    {
-        auto fc = std::make_shared<juce::FileChooser>("Export Soundboard Profile", juce::File{}, "*.zip");
-        fc->launchAsync(juce::FileBrowserComponent::saveMode,
-            [this, fc, &profileManager](const juce::FileChooser& chooser) {
-                if (!chooser.getResults().isEmpty())
-                    profileManager.exportProfile(chooser.getResult());
-            });
-    }
+    juce::ignoreUnused(button);
 }
 
 void QuickKeySettingsContentComponent::textEditorTextChanged(juce::TextEditor& editor)
 {
-    // This function's logic remains correct.
     if (&editor == &nameEditor)
     {
         slotsToEdit.getReference(selectedSlot).displayName = editor.getText();
@@ -195,7 +246,6 @@ void QuickKeySettingsContentComponent::textEditorTextChanged(juce::TextEditor& e
 
 void QuickKeySettingsContentComponent::changeListenerCallback(juce::ChangeBroadcaster* source)
 {
-    // This function's logic remains correct.
     if (source == &getSharedSoundboardProfileManager())
     {
         slotsToEdit = getSharedSoundboardProfileManager().getCurrentSlots();
@@ -210,33 +260,35 @@ void QuickKeySettingsContentComponent::changeListenerCallback(juce::ChangeBroadc
 
 void QuickKeySettingsContentComponent::showDetailsForSlot(int slotIndex)
 {
-    // This function's logic remains correct.
-    if (!juce::isPositiveAndBelow(slotIndex, 9))
-        return;
     selectedSlot = slotIndex;
     for (int i = 0; i < slotGridButtons.size(); ++i)
-        slotGridButtons[i]->setToggleState(i == selectedSlot, juce::dontSendNotification);
+        if (slotGridButtons[i]->getToggleState() && i != selectedSlot)
+            slotGridButtons[i]->setToggleState(false, juce::dontSendNotification);
+
     auto& lang = LanguageManager::getInstance();
     auto& slot = slotsToEdit.getReference(selectedSlot);
     nameEditor.setText(slot.displayName, juce::dontSendNotification);
-    juce::String fileText = slot.isEmpty() ? lang.get("quickKeySettingsWindow.noFile")
-        : slot.audioFile.getFileName();
-    assignFileButton.setButtonText(fileText);
-    juce::String hotkeyText = slot.hotkey.isValid() ? slot.hotkey.getTextDescription()
-        : lang.get("quickKeySettingsWindow.noHotkey");
+    assignFileButton.setButtonText(slot.isEmpty() ? lang.get("quickKeySettingsWindow.noFile") : slot.audioFile.getFileName());
+
+    // Bước 3: Áp dụng hàm mới để hiển thị tên hotkey
+    juce::String hotkeyText;
+    if (slot.hotkey.isValid())
+        hotkeyText = formatVKHotkeyText(slot.hotkey);
+
+    if (hotkeyText.isEmpty())
+        hotkeyText = lang.get("quickKeySettingsWindow.noHotkey");
+
     setHotkeyButton.setButtonText(hotkeyText);
+    setHotkeyButton.setColour(juce::TextButton::buttonColourId, getLookAndFeel().findColour(juce::TextButton::buttonColourId));
 }
 
 void QuickKeySettingsContentComponent::chooseFileForSlot(int slotIndex)
 {
-    // This function's logic remains correct.
     auto fc = std::make_shared<juce::FileChooser>("Select an audio file for Slot " + juce::String(slotIndex + 1),
-        juce::File{},
-        "*.mp3;*.wav;*.aif;*.aiff");
+        juce::File{}, "*.mp3;*.wav;*.aif;*.aiff");
     fc->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
         [this, fc, slotIndex](const juce::FileChooser& chooser) {
-            if (chooser.getResults().isEmpty())
-                return;
+            if (chooser.getResults().isEmpty()) return;
             slotsToEdit.getReference(slotIndex).audioFile = chooser.getResult();
             showDetailsForSlot(slotIndex);
         });
@@ -244,60 +296,31 @@ void QuickKeySettingsContentComponent::chooseFileForSlot(int slotIndex)
 
 void QuickKeySettingsContentComponent::setHotkeyForSlot(int slotIndex)
 {
-    // This function's logic remains correct.
-    class HotkeyCaptureComponent : public juce::Component, public juce::KeyListener
+    if (isCapturingHotkey)
     {
-    public:
-        HotkeyCaptureComponent(const juce::String& instructionText,
-            std::function<void(const juce::KeyPress&)> onKeyCaptured)
-            : onKeyCapturedCallback(onKeyCaptured)
-        {
-            setSize(350, 100); setWantsKeyboardFocus(true); addKeyListener(this);
-            infoLabel.setText(instructionText, juce::dontSendNotification);
-            infoLabel.setJustificationType(juce::Justification::centred);
-            addAndMakeVisible(infoLabel);
-        }
-        void resized() override { infoLabel.setBounds(getLocalBounds()); }
-        bool keyPressed(const juce::KeyPress& key, juce::Component*) override
-        {
-            if (auto* dw = findParentComponentOfClass<juce::DialogWindow>())
-            {
-                if (!key.isKeyCurrentlyDown(juce::KeyPress::escapeKey))
-                {
-                    if (onKeyCapturedCallback)
-                        onKeyCapturedCallback(key);
-                }
-                dw->exitModalState(0);
-            }
-            return true;
-        }
-    private:
-        std::function<void(const juce::KeyPress&)> onKeyCapturedCallback;
-        juce::Label infoLabel;
-    };
-    auto& lang = LanguageManager::getInstance();
-    auto onKeyCapturedLambda = [this, slotIndex](const juce::KeyPress& key)
-        {
-            slotsToEdit.getReference(slotIndex).hotkey = key;
-            showDetailsForSlot(slotIndex);
-        };
-    auto* captureComponent = new HotkeyCaptureComponent(lang.get("quickKeySettingsWindow.hotkeyPromptMessage"),
-        onKeyCapturedLambda);
-    juce::DialogWindow::LaunchOptions options;
-    options.content.setOwned(captureComponent);
-    options.dialogTitle = lang.get("quickKeySettingsWindow.hotkeyPromptTitle");
-    options.componentToCentreAround = this;
-    options.dialogBackgroundColour = getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId);
-    options.escapeKeyTriggersCloseButton = true;
-    options.useNativeTitleBar = true;
-    options.resizable = false;
-    options.launchAsync();
-}
+        cancelCaptureMode();
+        return;
+    }
 
+    if (auto* app = dynamic_cast<idolLiveAudioApplication*>(juce::JUCEApplication::getInstance()))
+    {
+        if (auto* hotkeyManager = app->getPublicGlobalHotkeyManager())
+        {
+            isCapturingHotkey = true;
+            setHotkeyButton.setButtonText(LanguageManager::getInstance().get("quickKeySettingsWindow.hotkeyPromptMessage"));
+            setHotkeyButton.setColour(juce::TextButton::buttonColourId, juce::Colours::orange);
+
+            hotkeyManager->setCaptureMode([this, slotIndex](const juce::KeyPress& key) {
+                slotsToEdit.getReference(slotIndex).hotkey = key;
+                isCapturingHotkey = false;
+                showDetailsForSlot(slotIndex);
+                });
+        }
+    }
+}
 
 void QuickKeySettingsContentComponent::saveChanges()
 {
-    // This function's logic remains correct.
     auto profileDir = getSharedSoundboardProfileManager().getProfileDirectory();
     for (auto& slot : slotsToEdit)
     {
@@ -322,7 +345,6 @@ void QuickKeySettingsContentComponent::saveChanges()
 
 void QuickKeySettingsContentComponent::updateAllUITexts()
 {
-    // This function's logic remains correct.
     auto& lang = LanguageManager::getInstance();
     nameLabel.setText(lang.get("quickKeySettingsWindow.slotNameLabel"), juce::dontSendNotification);
     saveButton.setButtonText(lang.get("quickKeySettingsWindow.saveProfile"));
@@ -331,17 +353,26 @@ void QuickKeySettingsContentComponent::updateAllUITexts()
     exportButton.setButtonText(lang.get("quickKeySettingsWindow.exportProfile"));
 }
 
+void QuickKeySettingsContentComponent::cancelCaptureMode()
+{
+    if (isCapturingHotkey)
+    {
+        isCapturingHotkey = false;
+        if (auto* app = dynamic_cast<idolLiveAudioApplication*>(juce::JUCEApplication::getInstance()))
+            if (auto* manager = app->getPublicGlobalHotkeyManager())
+                manager->setCaptureMode(nullptr);
+        showDetailsForSlot(selectedSlot);
+    }
+}
 
 //==============================================================================
 // QuickKeySettingsWindow Implementation
 //==============================================================================
-
 QuickKeySettingsWindow::QuickKeySettingsWindow(std::function<void()> onWindowClosed)
     : DocumentWindow("Soundboard Settings", juce::Desktop::getInstance().getDefaultLookAndFeel()
         .findColour(juce::ResizableWindow::backgroundColourId), allButtons),
     onWindowClosedCallback(onWindowClosed)
 {
-    // The constructor logic remains correct.
     setUsingNativeTitleBar(true);
     setContentOwned(new QuickKeySettingsContentComponent(), true);
     setResizable(true, true);
@@ -354,7 +385,6 @@ QuickKeySettingsWindow::~QuickKeySettingsWindow() {}
 
 void QuickKeySettingsWindow::closeButtonPressed()
 {
-    // The close button logic remains correct.
     if (onWindowClosedCallback)
         onWindowClosedCallback();
 }

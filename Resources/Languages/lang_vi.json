@@ -29,6 +29,12 @@
         "assignPreset": "Gán Preset vào ô này",
         "clearSlot": "Xóa gán ở ô này"
     },
+    "globalHotkeys": {
+        "hookInstallOk": "Đã cài đặt hook bàn phím toàn cục thành công.",
+        "hookInstallFail": "Cài đặt hook bàn phím toàn cục thất bại.",
+        "hookUninstall": "Đã gỡ cài đặt hook bàn phím toàn cục.",
+        "managerUpdated": "Trình quản lý phím tắt toàn cục đã được cập nhật với {{count}} ô."
+    },
     "tracks": {
         "vocal": "GIỌNG HÁT",
         "music": "NHẠC NỀN",
@@ -139,12 +145,13 @@
     "masterUtility": {
         "masterPlugins": "Plugin Kênh Tổng",
         "quickKeySettings": "Cài đặt Phím tắt",
-        "recAndPlayTitle": "GHI ÂM & PHÁT",
+        "recAndPlayTitle": "GHI ÂM & PHÁT KÊNH TỔNG",
         "record": "Ghi Âm",
         "play": "Phát",
         "pause": "Dừng",
         "stop": "Ngừng",
-        "list": "DS Ghi"
+        "list": "DS Ghi",
+        "noFileLoaded": "Chưa có tệp nào"
     },
     "recordingListWindow": {
         "title": "Danh sách Bản ghi",

@@ -3,6 +3,8 @@
 #include "JuceHeader.h"
 #include "Data/PluginManager/PluginManager.h"
 #include "Data/PresetManager.h"
+// <<< ADDED: Include the new manager >>>
+#include "GlobalHotkeyManager.h" 
 
 // Forward declarations
 class PresetManagerWindow;
@@ -35,6 +37,10 @@ public:
     void showPresetManagerWindow();
     void showPluginManagerWindow();
 
+    #if JUCE_WINDOWS
+    GlobalHotkeyManager* getPublicGlobalHotkeyManager() { return globalHotkeyManager.get(); }
+    #endif
+
 private:
     class MainWindow : public juce::DocumentWindow
     {
@@ -48,6 +54,11 @@ private:
 
     std::unique_ptr<PluginManager> pluginManager;
     std::unique_ptr<PresetManager> presetManager;
+
+    // <<< ADDED: The manager for global hotkeys >>>
+#if JUCE_WINDOWS
+    std::unique_ptr<GlobalHotkeyManager> globalHotkeyManager;
+#endif
 
     std::unique_ptr<SplashWindow> splashWindow;
     std::unique_ptr<MainWindow> mainWindow;

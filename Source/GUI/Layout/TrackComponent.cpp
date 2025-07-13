@@ -308,7 +308,7 @@ void TrackComponent::resized()
 
     const int headerHeight = 40;
     const int topControlsHeight = 170;
-    const int playerHeight = 80;
+    const int playerHeight = 90;
 
     auto headerArea = bounds.removeFromTop(headerHeight);
     bounds.removeFromTop(padding);

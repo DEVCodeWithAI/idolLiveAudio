@@ -29,6 +29,12 @@
         "assignPreset": "Assign Preset to this Slot",
         "clearSlot": "Clear this Slot"
     },
+    "globalHotkeys": {
+        "hookInstallOk": "Global keyboard hook installed successfully.",
+        "hookInstallFail": "Failed to install global keyboard hook.",
+        "hookUninstall": "Global keyboard hook uninstalled.",
+        "managerUpdated": "Global Hotkey Manager updated with {{count}} slots."
+    },
     "tracks": {
         "vocal": "VOCAL",
         "music": "MUSIC",
@@ -139,12 +145,13 @@
     "masterUtility": {
         "masterPlugins": "Master Plugins",
         "quickKeySettings": "QuickKey Settings",
-        "recAndPlayTitle": "REC & PLAY",
+        "recAndPlayTitle": "MASTER RECORD & PLAYER",
         "record": "Record",
         "play": "Play",
         "pause": "Pause",
         "stop": "Stop",
-        "list": "List"
+        "list": "List",
+        "noFileLoaded": "No File Loaded"
     },
     "recordingListWindow": {
         "title": "Recorded Tracks",

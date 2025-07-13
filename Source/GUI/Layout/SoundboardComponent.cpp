@@ -1,8 +1,8 @@
-/*
+﻿/*
   ==============================================================================
 
     SoundboardComponent.cpp
-    (Fixed compiler errors)
+    (FIXED: Added missing include for Windows VK_ codes)
 
   ==============================================================================
 */
@@ -10,6 +10,68 @@
 #include "SoundboardComponent.h"
 #include "../../Components/Helpers.h"
 #include "../../AudioEngine/SoundPlayer.h"
+#include "../../Application/Application.h" 
+
+//==============================================================================
+// CÁC HÀM TRỢ GIÚP ĐỂ HIỂN THỊ ĐÚNG TÊN HOTKEY
+//==============================================================================
+
+static juce::String getReadableKeyNameFromVK(int vkCode)
+{
+    switch (vkCode)
+    {
+    case VK_CONTROL: case VK_LCONTROL: case VK_RCONTROL: return "Ctrl";
+    case VK_SHIFT: case VK_LSHIFT: case VK_RSHIFT:       return "Shift";
+    case VK_MENU: case VK_LMENU: case VK_RMENU:          return "Alt";
+    case VK_LWIN: case VK_RWIN:                          return "Win";
+
+    case VK_RETURN: return "Enter";
+    case VK_ESCAPE: return "Esc";
+    case VK_SPACE:  return "Space";
+    case VK_BACK:   return "Backspace";
+    case VK_TAB:    return "Tab";
+    case VK_DELETE: return "Delete";
+
+    case VK_LEFT:   return "Left";
+    case VK_RIGHT:  return "Right";
+    case VK_UP:     return "Up";
+    case VK_DOWN:   return "Down";
+
+    case VK_F1: return "F1"; case VK_F2: return "F2"; case VK_F3: return "F3";
+    case VK_F4: return "F4"; case VK_F5: return "F5"; case VK_F6: return "F6";
+    case VK_F7: return "F7"; case VK_F8: return "F8"; case VK_F9: return "F9";
+    case VK_F10: return "F10"; case VK_F11: return "F11"; case VK_F12: return "F12";
+
+    default:
+        if ((vkCode >= 'A' && vkCode <= 'Z') || (vkCode >= '0' && vkCode <= '9'))
+            return juce::String::charToString((juce_wchar)vkCode);
+    }
+
+    return "[?]";
+}
+
+static juce::String formatVKHotkeyText(const juce::KeyPress& key)
+{
+    if (!key.isValid())
+        return {};
+
+    juce::StringArray parts;
+    const auto mods = key.getModifiers();
+
+    if (mods.isCtrlDown())    parts.add("Ctrl");
+    if (mods.isShiftDown())   parts.add("Shift");
+    if (mods.isAltDown())     parts.add("Alt");
+    if (mods.isCommandDown()) parts.add("Win");
+
+    const int vkCode = key.getKeyCode();
+    juce::String mainKey = getReadableKeyNameFromVK(vkCode);
+
+    if (!parts.contains(mainKey))
+        parts.add(mainKey);
+
+    return parts.joinIntoString(" + ");
+}
+
 
 //==============================================================================
 SoundboardComponent::SoundboardComponent(AudioEngine& engine)
@@ -141,8 +203,6 @@ void SoundboardComponent::updateTexts()
 
     titleLabel.setText(lang.get("soundboard.title"), juce::dontSendNotification);
     volumeLabel.setText(lang.get("soundboard.volume"), juce::dontSendNotification);
-
-    // <<< FIX IS HERE: Removed second argument
     stopAllButton.setButtonText(lang.get("soundboard.stop"));
 
     if (enableButton.getToggleState())
@@ -163,11 +223,15 @@ void SoundboardComponent::updateButtonLabels()
             if (juce::isPositiveAndBelow(i, slots.size()))
             {
                 const auto& slot = slots.getReference(i);
+
+                juce::String hotkeyString = formatVKHotkeyText(slot.hotkey);
                 juce::String buttonText = slot.displayName;
-                if (slot.hotkey.isValid())
+
+                if (hotkeyString.isNotEmpty())
                 {
-                    buttonText += "\n[" + slot.hotkey.getTextDescription() + "]";
+                    buttonText += "\n[" + hotkeyString + "]";
                 }
+
                 button->setButtonText(buttonText);
                 button->setEnabled(!slot.isEmpty());
             }

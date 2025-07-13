@@ -1,3 +1,5 @@
+﻿// Source/GUI/Components/RecorderComponent.h
+
 #pragma once
 
 #include <JuceHeader.h>
@@ -30,13 +32,18 @@ private:
     void pausePlayback();
     void resumePlayback();
 
+    // <<< THÊM HÀM HELPER NÀY >>>
+    void updateLoadedFileLabel();
+
 
     AudioEngine& audioEngine;
 
     std::unique_ptr<RecordingListWindow> listWindow;
 
+    // <<< THÊM 2 LABEL MỚI >>>
     juce::Label titleLabel;
-    
+    juce::Label loadedFileLabel;
+
     juce::TextButton recordButton;
     juce::TextButton playButton;
     juce::TextButton stopButton;
@@ -45,6 +52,8 @@ private:
     juce::Slider positionSlider;
     juce::Label currentTimeLabel;
     juce::Label totalTimeLabel;
+    juce::Label volumeLabel;
+    juce::Slider volumeSlider;
 
     std::unique_ptr<RecordingListWindow> recordingListWindow;
 
@@ -56,7 +65,10 @@ private:
         Recording
     };
 
-    PlayState state { PlayState::Stopped };
+    PlayState state{ PlayState::Stopped };
+
+    // <<< THÊM BIẾN NÀY ĐỂ LƯU FILE >>>
+    juce::File currentlyLoadedFile;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(RecorderComponent)
 };

@@ -55,6 +55,8 @@ public:
     void resumePlayback();
     AudioRecorder& getAudioRecorder() { return *audioRecorder; }
     juce::AudioTransportSource& getTransportSource() { return playbackSource; }
+    void setPlaybackGain(float newGain);
+    float getPlaybackGain() const;
 
     // --- Các hàm điều khiển cho Player của từng Track ---
     void startTrackPlayback(TrackPlayerComponent::PlayerType type, const juce::File& file);
@@ -92,59 +94,61 @@ public:
     int getStableBlockSize() const { return stableBlockSize; }
 
 private:
+    void prepareAllProcessors(double sampleRate, int samplesPerBlock);
+
     juce::AudioDeviceManager& deviceManager;
 
-    // Các bộ xử lý chính
+    // State variables
+    double stableSampleRate = 0.0;
+    int stableBlockSize = 0;
+    double currentSampleRate = 0.0;
+    int currentBlockSize = 0;
+    std::atomic<int> vocalInputChannel = -1, musicInputLeftChannel = -1, musicInputRightChannel = -1;
+    std::atomic<int> selectedOutputLeftChannel = -1, selectedOutputRightChannel = -1;
+
+    // Processors
     TrackProcessor vocalProcessor{ Identifiers::VocalProcessorState };
     TrackProcessor musicProcessor{ Identifiers::MusicProcessorState };
     MasterProcessor masterProcessor{ Identifiers::MasterProcessorState };
 
-    // Các chuỗi FX
+    // FX Chains
     FXChain vocalFxChain;
     FXChain musicFxChain;
 
-    // Các bộ trộn
+    // Mixers
     std::unique_ptr<IdolAZ::SoundPlayer> soundPlayer;
     juce::MixerAudioSource soundboardMixer;
     juce::MixerAudioSource directOutputMixer;
 
-    // Các buffer âm thanh
+    // Audio Buffers
     juce::AudioBuffer<float> vocalBuffer, musicStereoBuffer, mixBuffer, soundboardBuffer, directOutputBuffer, fxSendBuffer;
     std::array<juce::AudioBuffer<float>, 4> vocalFxReturnBuffers;
     std::array<juce::AudioBuffer<float>, 4> musicFxReturnBuffers;
     juce::AudioBuffer<float> vocalPlayerBuffer, musicPlayerBuffer;
 
-    // Các thành viên cho REC & PLAY kênh Master
+    // Master Rec & Play members
     juce::AudioFormatManager formatManager;
     std::unique_ptr<AudioRecorder> audioRecorder;
     std::unique_ptr<juce::AudioFormatReaderSource> currentPlaybackReader;
     juce::AudioTransportSource playbackSource;
 
-    // Các thành viên cho Player/Recorder của từng track
+    // Track Player/Recorder members
     std::unique_ptr<juce::AudioFormatReaderSource> vocalTrackReader, musicTrackReader;
     juce::AudioTransportSource vocalTrackSource, musicTrackSource;
     std::unique_ptr<AudioRecorder> vocalTrackRecorder, musicTrackRecorder;
 
-    // Các thành viên của Project Record
+    // Project Record members
     std::unique_ptr<AudioRecorder> rawVocalRecorder;
     std::unique_ptr<AudioRecorder> rawMusicRecorder;
-    std::atomic<bool> isProjectPlaybackMode{ false }; // Đã sửa lỗi đánh máy "Moe"
+    std::atomic<bool> isProjectPlaybackMode{ false };
     juce::String currentProjectName;
     juce::File currentVocalRawFile;
     juce::File currentMusicRawFile;
     juce::ValueTree projectState{ "ProjectState" };
 
-    // Các biến trạng thái
-    std::atomic<int> vocalInputChannel = -1, musicInputLeftChannel = -1, musicInputRightChannel = -1;
-    std::atomic<int> selectedOutputLeftChannel = -1, selectedOutputRightChannel = -1;
-    double currentSampleRate = 0.0;
-    int currentBlockSize = 0;
+    // Linked UI Components
     TrackComponent* vocalTrackComponent = nullptr;
     TrackComponent* musicTrackComponent = nullptr;
-
-    // Biến lưu tạm (sampleRate, bufferSize)
-    double stableSampleRate = 0.0;
-    int stableBlockSize = 0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AudioEngine)
 };

@@ -1,4 +1,4 @@
-/*
+﻿/*
   ==============================================================================
 
     SoundboardSlot.h
@@ -36,6 +36,9 @@ struct SoundboardSlot
 
     // A unique identifier for this slot, typically from 0 to 8.
     int slotId = -1;
+
+    // True = chiếm dụng phím(hành vi cũ), false = mượn phím(hành vi mới)
+    bool consumeKey = false;
 
     /** Returns true if no audio file is associated with this slot. */
     bool isEmpty() const

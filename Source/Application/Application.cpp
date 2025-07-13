@@ -1,3 +1,5 @@
+﻿#define NOMINMAX
+
 #include "Application.h"
 #include "../GUI/MainComponent/MainComponent.h"
 #include "../GUI/Windows/PresetManagerWindow.h"
@@ -5,9 +7,11 @@
 #include "../GUI/Windows/SplashScreenComponent.h"
 #include "../Data/AppState.h"
 #include "../Data/LanguageManager/LanguageManager.h"
-// Dòng #include "CrashHandler.h" đã được xóa
+#include "../Data/SoundboardManager.h"
+#include "../AudioEngine/SoundPlayer.h"
+#include <algorithm> // This is still required for std::max
 
-
+//==============================================================================
 PluginManager& getSharedPluginManager()
 {
     auto* app = dynamic_cast<idolLiveAudioApplication*>(juce::JUCEApplication::getInstance());
@@ -26,22 +30,20 @@ PresetManager& getSharedPresetManager()
 }
 
 //==============================================================================
-
 idolLiveAudioApplication::idolLiveAudioApplication() {}
 
 idolLiveAudioApplication::MainWindow::MainWindow(juce::String name)
     : DocumentWindow(name,
         juce::Desktop::getInstance().getDefaultLookAndFeel()
         .findColour(juce::ResizableWindow::backgroundColourId),
-        DocumentWindow::allButtons)
+        DocumentWindow::minimiseButton | DocumentWindow::closeButton)
 {
     setUsingNativeTitleBar(true);
     setContentOwned(new MainComponent(), true);
 #if JUCE_IOS || JUCE_ANDROID
     setFullScreen(true);
 #else
-    setResizable(true, true);
-    setResizeLimits(1640, 1010, 10000, 10000);
+    setResizable(false, false);
     centreWithSize(1640, 1010);
 #endif
     setVisible(false);
@@ -62,7 +64,7 @@ void idolLiveAudioApplication::MainWindow::closeButtonPressed()
     }
 }
 
-// ... (Class SplashWindow không thay đổi) ...
+
 class SplashWindow final : public juce::DocumentWindow
 {
 public:
@@ -76,23 +78,15 @@ public:
         const int desiredHeight = static_cast<int>(desiredWidth * aspectRatio);
 
         setContentOwned(new SplashScreenComponent(), true);
-
         setUsingNativeTitleBar(false);
         setResizable(false, false);
-
         centreWithSize(static_cast<int>(desiredWidth), desiredHeight);
-
         setVisible(true);
-    }
-
-    SplashScreenComponent* getSplashContent()
-    {
-        return dynamic_cast<SplashScreenComponent*>(getContentComponent());
     }
 
     void setStatusMessage(const juce::String& msg)
     {
-        if (auto* content = getSplashContent())
+        if (auto* content = dynamic_cast<SplashScreenComponent*>(getContentComponent()))
             content->setStatusMessage(msg);
     }
 
@@ -101,11 +95,8 @@ public:
 
 
 //==============================================================================
-
 void idolLiveAudioApplication::initialise(const juce::String& commandLine)
 {
-    // Lời gọi CrashHandler::install(); đã được xóa
-
     juce::ignoreUnused(commandLine);
 
     splashWindow = std::make_unique<SplashWindow>();
@@ -115,6 +106,9 @@ void idolLiveAudioApplication::initialise(const juce::String& commandLine)
     splashWindow->setStatusMessage(lang.get("splash.initManagers"));
     pluginManager = std::make_unique<PluginManager>();
     presetManager = std::make_unique<PresetManager>();
+#if JUCE_WINDOWS
+    globalHotkeyManager = std::make_unique<GlobalHotkeyManager>();
+#endif
 
     splashWindow->setStatusMessage(lang.get("splash.createWindow"));
     mainWindow.reset(new MainWindow(getApplicationName()));
@@ -140,6 +134,25 @@ void idolLiveAudioApplication::initialise(const juce::String& commandLine)
             }
         }
 
+#if JUCE_WINDOWS
+        if (globalHotkeyManager != nullptr)
+        {
+            globalHotkeyManager->onHotkeyTriggered = [mainComp](int slotIndex)
+                {
+                    if (mainComp)
+                    {
+                        auto& soundPlayer = mainComp->getAudioEngine().getSoundPlayer();
+                        const auto& slot = getSharedSoundboardProfileManager().getCurrentSlots().getReference(slotIndex);
+                        if (!slot.isEmpty())
+                        {
+                            soundPlayer.play(slot.audioFile, slotIndex);
+                        }
+                    }
+                };
+            globalHotkeyManager->start();
+        }
+#endif
+
         auto error = deviceManager.initialise(32, 32, deviceSettingsXml.get(), true);
         if (error.isNotEmpty()) { DBG("Audio device initialisation failed: " + error); }
     }
@@ -148,6 +161,7 @@ void idolLiveAudioApplication::initialise(const juce::String& commandLine)
     const auto elapsedTime = juce::Time::getMillisecondCounter() - startTime;
     const int minDisplayTime = 4000;
 
+    // Now this line will compile correctly without conflicts.
     int timeToWait = std::max(0, minDisplayTime - (int)elapsedTime);
 
     auto* mainWin = mainWindow.get();
@@ -160,11 +174,23 @@ void idolLiveAudioApplication::initialise(const juce::String& commandLine)
 
 void idolLiveAudioApplication::shutdown()
 {
+#if JUCE_WINDOWS
+    if (globalHotkeyManager != nullptr)
+    {
+        globalHotkeyManager->stop();
+        globalHotkeyManager.reset();
+    }
+#endif
+
+    /*
+    // <<< VÔ HIỆU HÓA KHỐI LỆNH NÀY >>>
+    // Ngăn không cho lưu trạng thái của MainComponent khi tắt ứng dụng.
     if (mainWindow != nullptr)
     {
         if (auto* mainComp = dynamic_cast<MainComponent*>(mainWindow->getContentComponent()))
             AppState::getInstance().saveState(*mainComp);
     }
+    */
 
     if (auto* mainComp = dynamic_cast<MainComponent*>(mainWindow->getContentComponent()))
     {
@@ -197,5 +223,5 @@ void idolLiveAudioApplication::showPluginManagerWindow()
     pluginManagerWindow->toFront(true);
 }
 
-
+//==============================================================================
 START_JUCE_APPLICATION(idolLiveAudioApplication)

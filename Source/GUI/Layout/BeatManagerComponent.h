@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <JuceHeader.h>
 #include "../../Data/LanguageManager/LanguageManager.h"
@@ -17,12 +17,16 @@ public:
     void paint(juce::Graphics& g) override;
     void resized() override;
 
-    // Callbacks to communicate with the parent component
     std::function<void()> onWantsToExpand;
     std::function<void()> onBeatPlayed;
 
 private:
-    // Forward declare the custom list box item and the custom search editor
+    struct BeatInfo
+    {
+        juce::String title;
+        juce::File file;
+    };
+
     class BeatItemComponent;
     class SearchEditor;
 
@@ -34,17 +38,19 @@ private:
     juce::TextButton openFolderButton;
     juce::TextButton rescanButton;
     juce::TextButton changeFolderButton;
-
     juce::ListBox searchResultsBox;
+    std::unique_ptr<juce::FileChooser> fileChooser;
 
     // Data
-    juce::File beatFolder; // Thư mục mặc định
-    juce::File customScanFolder; // Thư mục tùy chỉnh tạm thời
+    juce::File beatFolder;
+    juce::File customScanFolder;
     juce::File beatDatabaseFile;
-    juce::Array<juce::var> allBeats;
-    juce::Array<juce::var> filteredBeats;
 
-    // UI Callbacks
+    // <<< THAY ĐỔI LỚN: Dùng Array của struct thay vì juce::var >>>
+    juce::Array<BeatInfo> allBeats;
+    juce::Array<BeatInfo> filteredBeats;
+
+    // Callbacks and Listeners
     void buttonClicked(juce::Button* button) override;
     void textEditorReturnKeyPressed(juce::TextEditor& editor) override;
     void textEditorTextChanged(juce::TextEditor& editor) override;

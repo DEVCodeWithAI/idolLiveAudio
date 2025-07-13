@@ -29,29 +29,27 @@ AudioEngine::AudioEngine(juce::AudioDeviceManager& manager)
 
     soundPlayer = std::make_unique<IdolAZ::SoundPlayer>();
 
-    // <<< SỬA: soundboardMixer giờ chỉ chứa SoundPlayer >>>
     soundboardMixer.addInputSource(soundPlayer.get(), false);
-
-    // Player của REC & PLAY vẫn đi thẳng ra output
     directOutputMixer.addInputSource(&playbackSource, false);
+
 }
 
 AudioEngine::~AudioEngine()
 {
 }
 
-void AudioEngine::audioDeviceAboutToStart(juce::AudioIODevice* device)
+void AudioEngine::prepareAllProcessors(double sampleRate, int samplesPerBlock)
 {
-    currentSampleRate = device->getCurrentSampleRate();
-    currentBlockSize = device->getCurrentBufferSizeSamples();
+    stableSampleRate = sampleRate;
+    stableBlockSize = samplesPerBlock;
 
-    stableSampleRate = currentSampleRate;
-    stableBlockSize = currentBlockSize;
+    currentSampleRate = sampleRate;
+    currentBlockSize = samplesPerBlock;
 
-    DBG("AudioEngine started with stable settings: "
-        << stableSampleRate << " Hz, " << stableBlockSize << " samples.");
+    DBG("AudioEngine preparing all processors with settings: "
+        << sampleRate << " Hz, " << samplesPerBlock << " samples.");
 
-    juce::dsp::ProcessSpec stereoSpec{ currentSampleRate, static_cast<uint32_t>(currentBlockSize), 2 };
+    juce::dsp::ProcessSpec stereoSpec{ sampleRate, static_cast<uint32_t>(samplesPerBlock), 2 };
 
     vocalProcessor.prepare(stereoSpec);
     musicProcessor.prepare(stereoSpec);
@@ -60,21 +58,21 @@ void AudioEngine::audioDeviceAboutToStart(juce::AudioIODevice* device)
     for (auto& fxProc : vocalFxChain.processors) fxProc.prepare(stereoSpec);
     for (auto& fxProc : musicFxChain.processors) fxProc.prepare(stereoSpec);
 
-    soundboardMixer.prepareToPlay(currentBlockSize, currentSampleRate);
-    directOutputMixer.prepareToPlay(currentBlockSize, currentSampleRate);
-    playbackSource.prepareToPlay(currentBlockSize, currentSampleRate);
-    vocalTrackSource.prepareToPlay(currentBlockSize, currentSampleRate);
-    musicTrackSource.prepareToPlay(currentBlockSize, currentSampleRate);
+    soundboardMixer.prepareToPlay(samplesPerBlock, sampleRate);
+    directOutputMixer.prepareToPlay(samplesPerBlock, sampleRate);
+    playbackSource.prepareToPlay(samplesPerBlock, sampleRate);
+    vocalTrackSource.prepareToPlay(samplesPerBlock, sampleRate);
+    musicTrackSource.prepareToPlay(samplesPerBlock, sampleRate);
 
-    vocalBuffer.setSize(2, currentBlockSize);
-    musicStereoBuffer.setSize(2, currentBlockSize);
-    mixBuffer.setSize(2, currentBlockSize);
-    soundboardBuffer.setSize(2, currentBlockSize);
-    directOutputBuffer.setSize(2, currentBlockSize);
+    vocalBuffer.setSize(2, samplesPerBlock);
+    musicStereoBuffer.setSize(2, samplesPerBlock);
+    mixBuffer.setSize(2, samplesPerBlock);
+    soundboardBuffer.setSize(2, samplesPerBlock);
+    directOutputBuffer.setSize(2, samplesPerBlock);
 
-    fxSendBuffer.setSize(2, currentBlockSize);
-    for (auto& buffer : vocalFxReturnBuffers) buffer.setSize(2, currentBlockSize);
-    for (auto& buffer : musicFxReturnBuffers) buffer.setSize(2, currentBlockSize);
+    fxSendBuffer.setSize(2, samplesPerBlock);
+    for (auto& buffer : vocalFxReturnBuffers) buffer.setSize(2, samplesPerBlock);
+    for (auto& buffer : musicFxReturnBuffers) buffer.setSize(2, samplesPerBlock);
 
     vocalProcessor.reset();
     musicProcessor.reset();
@@ -82,6 +80,12 @@ void AudioEngine::audioDeviceAboutToStart(juce::AudioIODevice* device)
 
     for (auto& fxProc : vocalFxChain.processors) fxProc.reset();
     for (auto& fxProc : musicFxChain.processors) fxProc.reset();
+}
+
+
+void AudioEngine::audioDeviceAboutToStart(juce::AudioIODevice* device)
+{
+    prepareAllProcessors(device->getCurrentSampleRate(), device->getCurrentBufferSizeSamples());
 
     if (onDeviceStarted)
     {
@@ -113,12 +117,21 @@ void AudioEngine::audioDeviceStopped()
     selectedOutputRightChannel.store(-1);
 }
 
-// <<< MODIFIED: Full audio callback logic with send/return levels >>>
 void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChannelData, int numInputChannels,
     float* const* outputChannelData, int numOutputChannels,
     int numSamples, const juce::AudioIODeviceCallbackContext& context)
 {
     juce::ignoreUnused(context);
+
+    // <<< FIX: Use deviceManager to get the current device safely >>>
+    if (auto* currentDevice = deviceManager.getCurrentAudioDevice())
+    {
+        if (numSamples != currentBlockSize || currentDevice->getCurrentSampleRate() != currentSampleRate)
+        {
+            prepareAllProcessors(currentDevice->getCurrentSampleRate(), numSamples);
+        }
+    }
+
     juce::ScopedNoDenormals noDenormals;
 
     // --- 1. Xóa tất cả các buffer làm việc ---
@@ -411,9 +424,6 @@ void AudioEngine::updateActiveInputChannels(juce::AudioDeviceManager& manager)
             activeMonoIndices.add(i);
         }
     }
-    // XÓA DÒNG NÀY
-    // if (vocalTrackComponent != nullptr)
-    //     vocalTrackComponent->populateInputChannels(activeMonoNames, activeMonoIndices);
 
     juce::StringArray activeStereoNames;
     juce::Array<int> activeStereoStartIndices;
@@ -425,9 +435,6 @@ void AudioEngine::updateActiveInputChannels(juce::AudioDeviceManager& manager)
             activeStereoStartIndices.add(i);
         }
     }
-    // VÀ XÓA DÒNG NÀY
-    // if (musicTrackComponent != nullptr)
-    //     musicTrackComponent->populateInputChannels(activeStereoNames, activeStereoStartIndices);
 }
 
 
@@ -450,7 +457,9 @@ void AudioEngine::startPlayback(const juce::File& file)
 void AudioEngine::stopPlayback()
 {
     playbackSource.stop();
-    playbackSource.setPosition(0);
+    playbackSource.setSource(nullptr); // Đẩy source hiện tại ra
+    currentPlaybackReader.reset();     // Xóa reader
+    playbackSource.setPosition(0);     // Reset vị trí về đầu
 }
 
 void AudioEngine::pausePlayback()
@@ -517,10 +526,8 @@ AudioRecorder& AudioEngine::getTrackRecorder(TrackPlayerComponent::PlayerType ty
     return (type == TrackPlayerComponent::PlayerType::Vocal) ? *vocalTrackRecorder : *musicTrackRecorder;
 }
 
-// <<< THÊM CÁC HÀM MỚI VÀO CUỐI FILE >>>
 void AudioEngine::startProjectRecording(const juce::String& projectName)
 {
-    // SỬA: Sử dụng đúng tên biến isProjectPlaybackMode
     if (isProjectPlaybackMode.load()) return;
 
     stopProjectRecording();
@@ -542,7 +549,6 @@ void AudioEngine::startProjectRecording(const juce::String& projectName)
 
 void AudioEngine::stopProjectRecording()
 {
-    // SỬA: Sử dụng đúng tên biến isProjectPlaybackMode
     if (!isProjectPlaybackMode.load()) return;
 
     rawVocalRecorder->stop();
@@ -565,7 +571,6 @@ void AudioEngine::stopProjectRecording()
 
 bool AudioEngine::isProjectRecording() const
 {
-    // SỬA: Sử dụng đúng tên biến isProjectPlaybackMode
     return isProjectPlaybackMode.load();
 }
 
@@ -588,24 +593,15 @@ void AudioEngine::loadProject(const juce::File& projectJsonFile)
 
     if (vocalFile.existsAsFile() && musicFile.existsAsFile())
     {
-        // <<< BẮT ĐẦU SỬA LỖI Ở ĐÂY >>>
-
-        // 1. Dừng tất cả các player khác trước khi load
         stopLoadedProject();
         stopPlayback();
 
-        // 2. Yêu cầu các transport giải phóng nguồn cũ một cách an toàn
         vocalTrackSource.setSource(nullptr);
         musicTrackSource.setSource(nullptr);
 
-        // 3. Bây giờ mới an toàn để xóa các bộ đọc cũ
         vocalTrackReader.reset();
         musicTrackReader.reset();
 
-        // <<< KẾT THÚC SỬA LỖI >>>
-
-
-        // 4. Bắt đầu load file mới vào các bộ đọc
         if (auto* reader = formatManager.createReaderFor(vocalFile))
         {
             vocalTrackReader = std::make_unique<juce::AudioFormatReaderSource>(reader, true);
@@ -636,39 +632,32 @@ void AudioEngine::playLoadedProject()
 
 void AudioEngine::stopLoadedProject()
 {
-    // Dừng phát nhạc
     vocalTrackSource.stop();
     musicTrackSource.stop();
 
-    // <<< THÊM VÀO: Giải phóng hoàn toàn các source để đóng file handles >>>
     vocalTrackSource.setSource(nullptr);
     musicTrackSource.setSource(nullptr);
     vocalTrackReader.reset();
     musicTrackReader.reset();
 
-    // Reset vị trí cho chắc chắn
     vocalTrackSource.setPosition(0);
     musicTrackSource.setPosition(0);
 
     isProjectPlaybackMode = false;
 
-    // Xóa trạng thái project
     projectState.setProperty(ProjectStateIDs::name, {}, nullptr);
     projectState.setProperty(ProjectStateIDs::isPlaying, false, nullptr);
 }
 
 void AudioEngine::seekProject(double newPositionRatio)
 {
-    // Chỉ hoạt động khi ở chế độ project
     if (isProjectPlaybackMode)
     {
-        // Lấy độ dài từ một trong hai track (giả sử chúng bằng nhau)
         const double duration = vocalTrackSource.getLengthInSeconds();
         if (duration > 0)
         {
             const double newPosition = duration * newPositionRatio;
-            
-            // Đặt vị trí cho cả hai
+
             vocalTrackSource.setPosition(newPosition);
             musicTrackSource.setPosition(newPosition);
         }

@@ -8,8 +8,8 @@
   <MAINGROUP id="B708Sa" name="idolLiveAudio">
     <GROUP id="{AD963046-D105-7E97-82F8-04E24F432A02}" name="Resources">
       <GROUP id="{08105253-0E21-EFD1-B951-19A48B0626BC}" name="Languages">
-        <FILE id="NAApEB" name="lang_en.json" compile="0" resource="1" file="Resources/Languages/lang_en.json"/>
-        <FILE id="Upuzkn" name="lang_vi.json" compile="0" resource="1" file="Resources/Languages/lang_vi.json"/>
+        <FILE id="P7vJQq" name="lang_en.json" compile="0" resource="1" file="Resources/Languages/lang_en.json"/>
+        <FILE id="CFinhw" name="lang_vi.json" compile="0" resource="1" file="Resources/Languages/lang_vi.json"/>
       </GROUP>
       <FILE id="etZReR" name="icon_128x128.png" compile="0" resource="1"
             file="Resources/icon_128x128.png"/>
@@ -188,6 +188,10 @@
       <GROUP id="{80F54C55-F400-127E-DEAE-B724F6DA5840}" name="Application">
         <FILE id="CYk2sL" name="Application.cpp" compile="1" resource="0" file="Source/Application/Application.cpp"/>
         <FILE id="vm3Kv3" name="Application.h" compile="0" resource="0" file="Source/Application/Application.h"/>
+        <FILE id="xcpaY4" name="GlobalHotkeyManager.cpp" compile="1" resource="0"
+              file="Source/Application/GlobalHotkeyManager.cpp"/>
+        <FILE id="lFQY1T" name="GlobalHotkeyManager.h" compile="0" resource="0"
+              file="Source/Application/GlobalHotkeyManager.h"/>
       </GROUP>
     </GROUP>
   </MAINGROUP>

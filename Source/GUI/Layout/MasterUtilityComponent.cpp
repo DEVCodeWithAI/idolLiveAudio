@@ -113,7 +113,7 @@ void MasterUtilityComponent::resized()
 
     const int masterControlsHeight = 60;
     const int managementHeight = 40;
-    const int recorderHeight = 80;
+    const int recorderHeight = 135;
     const int padding = 10;
 
     auto masterControlsArea = bounds.removeFromBottom(masterControlsHeight);

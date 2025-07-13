@@ -3,7 +3,6 @@
 #include "JuceHeader.h"
 #include "../../AudioEngine/AudioEngine.h"
 #include "../../Components/CustomLookAndFeel.h"
-#include "../../Data/CommandIDs.h"
 #include <functional>
 
 // Forward declarations
@@ -16,9 +15,9 @@ class StatusBarComponent;
 class ProjectManagerComponent;
 class BeatManagerComponent;
 
+// MODIFIED: Removed ApplicationCommandTarget and its related functions
 class MainComponent : public juce::Component,
     public juce::ChangeListener,
-    public juce::ApplicationCommandTarget,
     public juce::Timer
 {
 public:
@@ -29,12 +28,6 @@ public:
     void resized() override;
 
     void changeListenerCallback(juce::ChangeBroadcaster* source) override;
-
-    // juce::ApplicationCommandTarget overrides
-    juce::ApplicationCommandTarget* getNextCommandTarget() override;
-    void getAllCommands(juce::Array<juce::CommandID>& commands) override;
-    void getCommandInfo(juce::CommandID commandID, juce::ApplicationCommandInfo& result) override;
-    bool perform(const InvocationInfo& info) override;
     void timerCallback() override;
 
     /**
@@ -51,15 +44,11 @@ public:
     TrackComponent& getMusicTrack() { return *musicTrack; }
     MasterUtilityComponent& getMasterUtilityComponent() { return *masterUtilityColumn; }
     PresetBarComponent& getPresetBar() { return *presetBar; }
-
-    // <<< NEW GETTER >>>
     MenubarComponent* getMenubarComponent() { return menubar.get(); }
 
 
 private:
     class GlassPane;
-
-    void reloadHotkeysFromSlots();
 
     void setBeatManagerExpanded(bool shouldBeExpanded);
 
@@ -72,7 +61,6 @@ private:
     AudioEngine audioEngine;
     CustomLookAndFeel customLookAndFeel;
 
-    juce::ApplicationCommandManager commandManager;
     std::unique_ptr<ProjectManagerComponent> projectManager;
 
     std::unique_ptr<MenubarComponent> menubar;

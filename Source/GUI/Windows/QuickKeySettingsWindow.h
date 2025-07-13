@@ -1,13 +1,4 @@
-﻿/*
-  ==============================================================================
-
-    QuickKeySettingsWindow.h
-    (Fixed scope issue for bounds variables)
-
-  ==============================================================================
-*/
-
-#pragma once
+﻿#pragma once
 
 #include <JuceHeader.h>
 #include "../../Data/SoundboardSlot.h"
@@ -15,8 +6,9 @@
 #include "../../Data/SoundboardManager.h"
 #include <functional>
 
-//==============================================================================
-/** A DocumentWindow to host the settings panel. */
+// Forward declaration
+class QuickKeySettingsContentComponent;
+
 class QuickKeySettingsWindow : public juce::DocumentWindow
 {
 public:
@@ -31,12 +23,12 @@ private:
 };
 
 
-//==============================================================================
-/** The main content component inside the QuickKeySettingsWindow. */
+// <<< MODIFIED: Inherits from juce::Timer instead of juce::FocusListener >>>
 class QuickKeySettingsContentComponent : public juce::Component,
     public juce::Button::Listener,
     public juce::ChangeListener,
-    public juce::TextEditor::Listener
+    public juce::TextEditor::Listener,
+    public juce::Timer // Changed from FocusListener
 {
 public:
     QuickKeySettingsContentComponent();
@@ -48,30 +40,28 @@ public:
     void textEditorTextChanged(juce::TextEditor& editor) override;
     void changeListenerCallback(juce::ChangeBroadcaster* source) override;
 
+    // <<< ADDED: Declaration for the timer callback >>>
+    void timerCallback() override;
+
 private:
     void showDetailsForSlot(int slotIndex);
     void chooseFileForSlot(int slotIndex);
     void setHotkeyForSlot(int slotIndex);
     void saveChanges();
     void updateAllUITexts();
+    void cancelCaptureMode();
 
-    // Data model
     juce::Array<SoundboardSlot> slotsToEdit;
     int selectedSlot = 0;
+    bool isCapturingHotkey = false;
 
-    // Left Panel: Slot selection
     juce::OwnedArray<juce::TextButton> slotGridButtons;
-
-    // Right Panel: Slot editor
     juce::Label nameLabel;
     juce::TextEditor nameEditor;
     juce::TextButton assignFileButton;
     juce::TextButton setHotkeyButton;
-
-    // Right Panel: Profile management
     juce::TextButton saveButton, cleanButton, importButton, exportButton;
 
-    // <<< FIX IS HERE: Declare bounds as member variables >>>
     juce::Rectangle<int> editorGroupBounds;
     juce::Rectangle<int> profileGroupBounds;
 

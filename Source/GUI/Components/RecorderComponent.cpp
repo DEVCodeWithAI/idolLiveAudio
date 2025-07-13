@@ -9,6 +9,12 @@ RecorderComponent::RecorderComponent(AudioEngine& engine)
     LanguageManager::getInstance().addChangeListener(this);
     audioEngine.getTransportSource().addChangeListener(this);
 
+    addAndMakeVisible(titleLabel);
+    titleLabel.setFont(IdolUIHelpers::createBoldFont(16.0f));
+    titleLabel.setJustificationType(juce::Justification::centred);
+
+    addAndMakeVisible(loadedFileLabel);
+
     addAndMakeVisible(recordButton);
     recordButton.setClickingTogglesState(true);
     recordButton.onClick = [this] {
@@ -47,6 +53,19 @@ RecorderComponent::RecorderComponent(AudioEngine& engine)
             audioEngine.getTransportSource().setPosition(positionSlider.getValue() * audioEngine.getTransportSource().getLengthInSeconds());
         };
 
+    addAndMakeVisible(volumeLabel);
+    addAndMakeVisible(volumeSlider);
+    volumeSlider.setSliderStyle(juce::Slider::LinearHorizontal);
+    volumeSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 50, 20);
+    volumeSlider.setRange(-60.0, 6.0, 0.1);
+    volumeSlider.onValueChange = [this] {
+        audioEngine.getTransportSource().setGain(juce::Decibels::decibelsToGain((float)volumeSlider.getValue()));
+        };
+    volumeSlider.setColour(juce::Slider::textBoxTextColourId, juce::Colours::white);
+    volumeSlider.setColour(juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
+    volumeSlider.setColour(juce::Slider::textBoxBackgroundColourId, juce::Colour(0xff2d2d2d));
+
+
     addAndMakeVisible(currentTimeLabel);
     currentTimeLabel.setJustificationType(juce::Justification::centredRight);
 
@@ -55,6 +74,8 @@ RecorderComponent::RecorderComponent(AudioEngine& engine)
 
     updateTexts();
     updateButtonStates();
+    updateLoadedFileLabel();
+    volumeSlider.setValue(juce::Decibels::gainToDecibels(audioEngine.getTransportSource().getGain()));
     startTimerHz(5);
 }
 
@@ -76,7 +97,16 @@ void RecorderComponent::resized()
 {
     auto bounds = getLocalBounds().reduced(10, 5);
 
-    auto buttonArea = bounds.removeFromTop(bounds.getHeight() / 2);
+    // Khu vực mới cho tiêu đề và tên file
+    auto titleArea = bounds.removeFromTop(25);
+    titleLabel.setBounds(titleArea);
+    bounds.removeFromTop(2);
+    auto loadedFileArea = bounds.removeFromTop(10);
+    loadedFileLabel.setBounds(loadedFileArea);
+    bounds.removeFromTop(5);
+
+    // Khu vực còn lại cho các control cũ
+    auto buttonArea = bounds.removeFromTop(bounds.getHeight() / 2 - 10);
     bounds.removeFromTop(5);
     auto sliderArea = bounds;
 
@@ -100,9 +130,16 @@ void RecorderComponent::resized()
 
     recordedListButton.setBounds(buttonArea.getRight() - listButtonWidth, buttonArea.getY(), listButtonWidth, buttonArea.getHeight());
 
-    currentTimeLabel.setBounds(sliderArea.removeFromLeft(50));
-    totalTimeLabel.setBounds(sliderArea.removeFromRight(50));
-    positionSlider.setBounds(sliderArea);
+    auto positionSliderArea = sliderArea.removeFromTop(sliderArea.getHeight() / 2);
+    sliderArea.removeFromTop(2);
+    auto volumeSliderArea = sliderArea;
+
+    currentTimeLabel.setBounds(positionSliderArea.removeFromLeft(50));
+    totalTimeLabel.setBounds(positionSliderArea.removeFromRight(50));
+    positionSlider.setBounds(positionSliderArea);
+
+    volumeLabel.setBounds(volumeSliderArea.removeFromLeft(80));
+    volumeSlider.setBounds(volumeSliderArea);
 }
 
 void RecorderComponent::changeListenerCallback(juce::ChangeBroadcaster* source)
@@ -137,6 +174,9 @@ void RecorderComponent::timerCallback()
         if (totalLength > 0 && !positionSlider.isMouseButtonDown())
             positionSlider.setValue(currentPos / totalLength, juce::dontSendNotification);
 
+        if (!volumeSlider.isMouseButtonDown())
+            volumeSlider.setValue(juce::Decibels::gainToDecibels(transport.getGain()), juce::dontSendNotification);
+
         currentTimeLabel.setText(formatTime(currentPos), juce::dontSendNotification);
         totalTimeLabel.setText(formatTime(totalLength), juce::dontSendNotification);
         totalTimeLabel.setColour(juce::Label::textColourId, juce::Colours::white);
@@ -164,19 +204,26 @@ void RecorderComponent::updateButtonStates()
     recordButton.setColour(juce::TextButton::buttonOnColourId, juce::Colours::red);
 
     playButton.setEnabled(state == PlayState::Stopped || state == PlayState::Paused);
+
     pauseButton.setEnabled(state == PlayState::Playing);
     stopButton.setEnabled(state != PlayState::Stopped);
     recordedListButton.setEnabled(state == PlayState::Stopped);
+    volumeSlider.setEnabled(state != PlayState::Recording);
 }
 
 void RecorderComponent::updateTexts()
 {
     auto& lang = LanguageManager::getInstance();
+    titleLabel.setText(lang.get("masterUtility.recAndPlayTitle"), juce::dontSendNotification);
+
     recordButton.setButtonText(lang.get("masterUtility.record"));
     playButton.setButtonText(lang.get("masterUtility.play"));
     pauseButton.setButtonText(lang.get("masterUtility.pause"));
     stopButton.setButtonText(lang.get("masterUtility.stop"));
     recordedListButton.setButtonText(lang.get("masterUtility.list"));
+    volumeLabel.setText(lang.get("soundboard.volume"), juce::dontSendNotification);
+
+    updateLoadedFileLabel();
 }
 
 juce::String RecorderComponent::formatTime(double seconds)
@@ -208,6 +255,7 @@ void RecorderComponent::startRecording()
     state = PlayState::Recording;
     audioEngine.getAudioRecorder().startRecording();
     updateButtonStates();
+    updateLoadedFileLabel();
 }
 
 void RecorderComponent::stopRecording()
@@ -217,16 +265,23 @@ void RecorderComponent::stopRecording()
     updateButtonStates();
     if (listWindow != nullptr)
         listWindow->refreshList();
+    updateLoadedFileLabel();
 }
 
 void RecorderComponent::startPlayback(const juce::File& fileToPlay)
 {
     audioEngine.startPlayback(fileToPlay);
+    currentlyLoadedFile = fileToPlay;
+    updateLoadedFileLabel();
 }
 
 void RecorderComponent::stopPlayback()
 {
     audioEngine.stopPlayback();
+    state = PlayState::Stopped; // Trực tiếp đặt trạng thái là Stopped
+    currentlyLoadedFile = {}; // Xóa file
+    updateLoadedFileLabel();
+    updateButtonStates();       // Cập nhật lại giao diện ngay lập tức
 }
 
 void RecorderComponent::pausePlayback()
@@ -244,5 +299,33 @@ void RecorderComponent::resumePlayback()
     if (state == PlayState::Paused)
     {
         audioEngine.resumePlayback();
+    }
+    else if (state == PlayState::Stopped)
+    {
+        if (currentlyLoadedFile.existsAsFile())
+        {
+            startPlayback(currentlyLoadedFile);
+        }
+        else
+        {
+            openRecordingList();
+        }
+    }
+}
+
+void RecorderComponent::updateLoadedFileLabel()
+{
+    if (state == PlayState::Recording)
+    {
+        // Sửa: Dùng juce::String() hoặc juce::String::empty để tạo chuỗi rỗng
+        loadedFileLabel.setText("", juce::dontSendNotification);
+    }
+    else if (currentlyLoadedFile.existsAsFile())
+    {
+        loadedFileLabel.setText(currentlyLoadedFile.getFileName(), juce::dontSendNotification);
+    }
+    else
+    {
+        loadedFileLabel.setText(LanguageManager::getInstance().get("masterUtility.noFileLoaded"), juce::dontSendNotification);
     }
 }

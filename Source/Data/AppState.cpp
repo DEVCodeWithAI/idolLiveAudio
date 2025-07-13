@@ -185,10 +185,14 @@ void AppState::loadPostDeviceState(MainComponent& mainComponent)
                 if (auto* outputSelector = menubar->getOutputSelector())
                     outputSelector->setSelectedChannelByName(appOutputName);
 
+            /*
+            // <<< VÔ HIỆU HÓA KHỐI LỆNH NÀY >>>
+            // Ngăn không cho gọi hàm loadPresetAndWindows() để nạp preset và các cửa sổ cũ.
             juce::Timer::callAfterDelay(150, [&, safeMainComp = juce::Component::SafePointer(&mainComponent)] {
                 if (safeMainComp)
                     loadPresetAndWindows(*safeMainComp);
                 });
+            */
         }
 
         // <<< MODIFIED: Load 5 quick preset assignments >>>
@@ -199,6 +203,7 @@ void AppState::loadPostDeviceState(MainComponent& mainComponent)
             {
                 quickPresetSlots.set(i, quickPresetsXml->getStringAttribute("slot" + juce::String(i), {}));
             }
+            sendChangeMessage();
         }
 
         // ... (loading active preset and open windows is unchanged) ...
