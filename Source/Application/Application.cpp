@@ -161,7 +161,6 @@ void idolLiveAudioApplication::initialise(const juce::String& commandLine)
     const auto elapsedTime = juce::Time::getMillisecondCounter() - startTime;
     const int minDisplayTime = 4000;
 
-    // Now this line will compile correctly without conflicts.
     int timeToWait = std::max(0, minDisplayTime - (int)elapsedTime);
 
     auto* mainWin = mainWindow.get();
@@ -182,15 +181,13 @@ void idolLiveAudioApplication::shutdown()
     }
 #endif
 
-    /*
-    // <<< VÔ HIỆU HÓA KHỐI LỆNH NÀY >>>
-    // Ngăn không cho lưu trạng thái của MainComponent khi tắt ứng dụng.
+    // Re-enabled state saving on shutdown. The logic inside saveState now
+    // controls what is actually saved (excluding ACTIVE_PRESET).
     if (mainWindow != nullptr)
     {
         if (auto* mainComp = dynamic_cast<MainComponent*>(mainWindow->getContentComponent()))
             AppState::getInstance().saveState(*mainComp);
     }
-    */
 
     if (auto* mainComp = dynamic_cast<MainComponent*>(mainWindow->getContentComponent()))
     {

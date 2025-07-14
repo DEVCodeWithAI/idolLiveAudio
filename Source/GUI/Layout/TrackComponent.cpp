@@ -681,7 +681,11 @@ void TrackComponent::togglePluginBypass(int row)
 void TrackComponent::audioProcessorParameterChanged(juce::AudioProcessor* changedProcessor, int, float)
 {
     juce::ignoreUnused(changedProcessor);
-    AppState::getInstance().setPresetDirty(true);
+    // <<< MODIFIED: Check the flag before setting dirty state >>>
+    if (!AppState::getInstance().isLoadingPreset())
+    {
+        AppState::getInstance().setPresetDirty(true);
+    }
     juce::MessageManager::callAsync([this] { pluginListBox.updateContent(); });
 }
 
@@ -690,7 +694,11 @@ void TrackComponent::audioProcessorChanged(juce::AudioProcessor* changedProcesso
     juce::ignoreUnused(changedProcessor);
     if (details.programChanged)
     {
-        AppState::getInstance().setPresetDirty(true);
+        // <<< MODIFIED: Check the flag before setting dirty state >>>
+        if (!AppState::getInstance().isLoadingPreset())
+        {
+            AppState::getInstance().setPresetDirty(true);
+        }
         juce::MessageManager::callAsync([this] { pluginListBox.updateContent(); });
     }
 }
@@ -699,16 +707,32 @@ void TrackComponent::addListenerToAllPlugins()
 {
     if (processor == nullptr) return;
     for (int i = 0; i < processor->getNumPlugins(); ++i)
+    {
+        // >>> LOGIC MỚI: Bỏ qua slot đầu tiên của kênh Music <<<
+        if (channelType == ChannelType::Music && i == 0)
+        {
+            continue;
+        }
+
         if (auto* plugin = processor->getPlugin(i))
             plugin->addListener(this);
+    }
 }
 
 void TrackComponent::removeListenerFromAllPlugins()
 {
     if (processor == nullptr) return;
     for (int i = 0; i < processor->getNumPlugins(); ++i)
+    {
+        // >>> LOGIC MỚI: Bỏ qua slot đầu tiên của kênh Music <<<
+        if (channelType == ChannelType::Music && i == 0)
+        {
+            continue;
+        }
+
         if (auto* plugin = processor->getPlugin(i))
             plugin->removeListener(this);
+    }
 }
 
 int TrackComponent::getNumRows()

@@ -1,4 +1,11 @@
-﻿#pragma once
+﻿/*
+  ==============================================================================
+
+    PresetBarComponent.h
+
+  ==============================================================================
+*/
+#pragma once
 
 #include "JuceHeader.h"
 #include "../../Data/LanguageManager/LanguageManager.h"
@@ -7,7 +14,6 @@
 #include <functional>
 #include <array>
 
-// <<< ADDED: Forward declaration for the new SlotComponent >>>
 class PresetSlotComponent;
 
 class PresetBarComponent : public juce::Component,
@@ -24,7 +30,6 @@ public:
     void saveAsNewPreset(std::function<void(bool)> onComplete);
     void loadPresetByName(const juce::String& name);
 
-    // <<< MOVED: These methods need to be public to be called by PresetSlotComponent >>>
     void loadQuickPreset(int slotIndex);
     void showAssignMenuForSlot(int slotIndex);
 
@@ -32,13 +37,15 @@ private:
     void updateTexts();
     void updateQuickButtonLabels();
     void handleSaveAction();
-    void performLoadTask(const juce::String& presetName);
+
+    void loadPresetTask(const juce::String& presetName);
+
+    // <<< FIXED: Updated function signature to match implementation >>>
+    void performFullReload(const juce::ValueTree& newState, const juce::String& presetName, bool isLocked, const juce::String& passwordHash);
 
     AudioEngine& audioEngine;
 
     juce::Label presetRunningLabel, presetRunningValue, quickChoiceLabel;
-
     std::array<std::unique_ptr<PresetSlotComponent>, AppState::numQuickSlots> quickLoadSlots;
-
     juce::TextButton savePresetButton, managePresetsButton;
 };

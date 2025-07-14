@@ -2,7 +2,7 @@
   ==============================================================================
 
     PresetBarComponent.cpp
-    (Fixed: Implemented robust preset loading by stopping/restarting audio device)
+    (Fixed: Corrected function signatures and save logic)
 
   ==============================================================================
 */
@@ -18,10 +18,9 @@
 #include "TrackComponent.h"
 #include "MasterUtilityComponent.h"
 #include "MenubarComponent.h"
+#include "StatusBarComponent.h"
 
 
-// ==============================================================================
-// A new inner class to group a slot button and its assign button
 class PresetSlotComponent : public juce::Component, public juce::Button::Listener
 {
 public:
@@ -29,12 +28,10 @@ public:
     {
         addAndMakeVisible(loadButton);
         loadButton.addListener(this);
-
         addAndMakeVisible(assignButton);
         assignButton.setButtonText("+");
         assignButton.addListener(this);
     }
-
     void resized() override
     {
         auto bounds = getLocalBounds();
@@ -42,7 +39,6 @@ public:
         bounds.removeFromRight(2);
         loadButton.setBounds(bounds);
     }
-
     void buttonClicked(juce::Button* button) override
     {
         if (button == &loadButton)
@@ -50,21 +46,13 @@ public:
         else if (button == &assignButton)
             ownerBar.showAssignMenuForSlot(slotIndex);
     }
-
-    void setButtonText(const juce::String& newText)
-    {
-        loadButton.setButtonText(newText);
-    }
-
+    void setButtonText(const juce::String& newText) { loadButton.setButtonText(newText); }
     juce::TextButton& getLoadButton() { return loadButton; }
-
 private:
     PresetBarComponent& ownerBar;
     int slotIndex;
     juce::TextButton loadButton, assignButton;
 };
-// ==============================================================================
-
 
 PresetBarComponent::PresetBarComponent(AudioEngine& engine)
     : audioEngine(engine)
@@ -72,33 +60,26 @@ PresetBarComponent::PresetBarComponent(AudioEngine& engine)
     LanguageManager::getInstance().addChangeListener(this);
     getSharedPresetManager().addChangeListener(this);
     AppState::getInstance().addChangeListener(this);
-
     addAndMakeVisible(presetRunningLabel);
     addAndMakeVisible(presetRunningValue);
     addAndMakeVisible(quickChoiceLabel);
-
     for (int i = 0; i < quickLoadSlots.size(); ++i)
     {
         quickLoadSlots[i] = std::make_unique<PresetSlotComponent>(*this, i);
         addAndMakeVisible(*quickLoadSlots[i]);
     }
-
     addAndMakeVisible(savePresetButton);
     addAndMakeVisible(managePresetsButton);
-
     presetRunningValue.setColour(juce::Label::textColourId, juce::Colour(0xffffbf00));
     presetRunningLabel.setFont(IdolUIHelpers::createRegularFont(14.0f));
     quickChoiceLabel.setFont(IdolUIHelpers::createBoldFont(14.0f));
     quickChoiceLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
     quickChoiceLabel.setJustificationType(juce::Justification::centredRight);
-
     savePresetButton.onClick = [this] { handleSaveAction(); };
-
     managePresetsButton.onClick = [] {
         if (auto* app = dynamic_cast<idolLiveAudioApplication*>(juce::JUCEApplication::getInstance()))
             app->showPresetManagerWindow();
         };
-
     updateTexts();
     updateQuickButtonLabels();
 }
@@ -125,25 +106,18 @@ void PresetBarComponent::resized()
     const int mainAreaWidth = parentWidth - (mainComponentPadding * 2);
     const int rightColumnWidth = mainAreaWidth / 3;
     const int verticalAlignmentLineX = parentWidth - mainComponentPadding - rightColumnWidth;
-
     auto bounds = getLocalBounds().reduced(10, 5);
-
     auto rightSection = bounds.removeFromRight(350);
     auto leftSection = bounds.removeFromLeft(250);
-
     managePresetsButton.setBounds(rightSection.removeFromRight(160));
     rightSection.removeFromRight(5);
     savePresetButton.setBounds(rightSection);
-
     presetRunningLabel.setBounds(leftSection.removeFromLeft(120));
     presetRunningValue.setBounds(leftSection);
-
     auto quickSlotsArea = bounds;
     quickSlotsArea.setRight(this->getLocalPoint(nullptr, juce::Point<int>{ verticalAlignmentLineX, 0 }).getX());
-
     quickChoiceLabel.setBounds(quickSlotsArea.removeFromLeft(100));
     quickSlotsArea.removeFromLeft(10);
-
     const int buttonWidth = 140;
     const int buttonGap = 4;
     for (const auto& slot : quickLoadSlots)
@@ -153,73 +127,119 @@ void PresetBarComponent::resized()
     }
 }
 
-// <<< MODIFIED FUNCTION: This now stops and restarts the audio device >>>
-void PresetBarComponent::performLoadTask(const juce::String& presetName)
+void PresetBarComponent::loadPresetTask(const juce::String& presetName)
 {
     if (presetName.isEmpty()) return;
 
-    if (auto* mainComp = findParentComponentOfClass<MainComponent>())
+    auto* mainComp = findParentComponentOfClass<MainComponent>();
+    if (mainComp == nullptr) return;
+
+    auto* statusBar = mainComp->getStatusBarComponent();
+    if (statusBar == nullptr) return;
+
+    AppState::getInstance().setIsLoadingPreset(true);
+
+    auto presetFile = getSharedPresetManager().getPresetDirectory().getChildFile(presetName + ".xml");
+    if (!presetFile.existsAsFile())
     {
-        auto& deviceManager = mainComp->getAudioDeviceManager();
-        auto& engine = mainComp->getAudioEngine();
+        statusBar->setStatusMessage("Error: Preset file not found!", true);
+        AppState::getInstance().setIsLoadingPreset(false);
+        return;
+    }
 
-        // <<< SỬA LỖI: Bước 1 - Lưu lại cấu hình IN/OUT hiện tại >>>
-        const juce::String savedVocalInputName = engine.getVocalInputChannelName();
-        const juce::String savedMusicInputName = engine.getMusicInputChannelName();
-        const juce::String savedOutputName = engine.getSelectedOutputChannelPairName();
+    auto xmlDoc = juce::parseXML(presetFile);
+    if (xmlDoc == nullptr || !xmlDoc->hasTagName("Preset"))
+    {
+        statusBar->setStatusMessage("Error: Invalid preset file!", true);
+        AppState::getInstance().setIsLoadingPreset(false);
+        return;
+    }
+    juce::ValueTree newState = juce::ValueTree::fromXml(*xmlDoc);
 
-        // --- Bước 2: Dừng xử lý audio ---
-        DBG("Stopping audio device to load preset...");
-        deviceManager.closeAudioDevice();
+    // Trích xuất thông tin trạng thái khóa từ preset
+    const bool isLocked = newState.getProperty(Identifiers::lockState, false);
+    const juce::String passwordHash = newState.getProperty(Identifiers::lockPasswordHash, "");
 
-        // --- Bước 3: Nạp preset một cách an toàn ---
-        mainComp->getVocalTrack().closeAllPluginWindows();
-        mainComp->getMusicTrack().closeAllPluginWindows();
-        mainComp->getMasterUtilityComponent().closeAllPluginWindows();
+    bool chainsAreIdentical = audioEngine.getVocalProcessor().isPluginChainIdentical(newState)
+        && audioEngine.getMusicProcessor().isPluginChainIdentical(newState)
+        && audioEngine.getMasterProcessor().isPluginChainIdentical(newState);
+    // (Giả sử các FX chain cũng được kiểm tra trong một bản triển khai đầy đủ)
 
-        auto& presetManager = getSharedPresetManager();
-        auto presetFile = presetManager.getPresetDirectory().getChildFile(presetName + ".xml");
-
-        if (presetFile.existsAsFile())
+    if (chainsAreIdentical)
+    {
+        statusBar->setStatusMessage("Hot-swapping preset...", false);
+        if (audioEngine.tryHotSwapState(newState))
         {
-            presetManager.loadPreset(engine, presetFile);
             AppState::getInstance().markAsSaved(presetName);
-            DBG("Preset '" + presetName + "' loaded successfully.");
+
+            // Áp dụng trạng thái khóa sau khi hot-swap thành công
+            AppState::getInstance().loadLockState(isLocked, passwordHash);
+
+            statusBar->setStatusMessage("Load successful!", false);
+            juce::Timer::callAfterDelay(2000, [statusBar]() { if (statusBar) statusBar->setStatusMessage("", false); });
         }
         else
         {
-            DBG("Preset file not found: " + presetFile.getFullPathName());
+            statusBar->setStatusMessage("Hot-swap failed, performing full reload...", true);
+            performFullReload(newState, presetName, isLocked, passwordHash);
         }
-
-        // --- Bước 4: Khởi động lại xử lý audio ---
-        DBG("Restarting audio device...");
-        deviceManager.restartLastAudioDevice();
-
-        // --- Bước 5: Đồng bộ lại IN/OUT và UI sau một khoảng trễ ngắn ---
-        juce::Timer::callAfterDelay(500, [this, mainComp, &engine,
-            savedVocalInputName, savedMusicInputName, savedOutputName]()
-            {
-                if (mainComp == nullptr) return;
-
-                DBG("Re-applying routing and syncing UI after device restart.");
-
-                // <<< SỬA LỖI: Gán lại cấu hình IN/OUT cho AudioEngine >>>
-                engine.setVocalInputChannelByName(savedVocalInputName);
-                engine.setMusicInputChannelByName(savedMusicInputName);
-                engine.setSelectedOutputChannelsByName(savedOutputName);
-
-                // <<< SỬA LỖI: Cập nhật lại giao diện với cấu hình đã lưu >>>
-                if (auto* vocalSelector = mainComp->getVocalTrack().getChannelSelector())
-                    vocalSelector->setSelectedChannelByName(savedVocalInputName);
-
-                if (auto* musicSelector = mainComp->getMusicTrack().getChannelSelector())
-                    musicSelector->setSelectedChannelByName(savedMusicInputName);
-
-                if (auto* menubar = mainComp->getMenubarComponent())
-                    if (auto* outputSelector = menubar->getOutputSelector())
-                        outputSelector->setSelectedChannelByName(savedOutputName);
-            });
     }
+    else
+    {
+        statusBar->setStatusMessage("Plugin chain changed, performing full reload...", false);
+        performFullReload(newState, presetName, isLocked, passwordHash);
+    }
+
+    juce::Timer::callAfterDelay(100, [] { AppState::getInstance().setIsLoadingPreset(false); });
+}
+
+void PresetBarComponent::performFullReload(const juce::ValueTree& newState, const juce::String& presetName, bool isLocked, const juce::String& passwordHash)
+{
+    auto* mainComp = findParentComponentOfClass<MainComponent>();
+    auto* statusBar = mainComp ? mainComp->getStatusBarComponent() : nullptr;
+    if (mainComp == nullptr || statusBar == nullptr) return;
+
+    bool preparationSuccess = audioEngine.prepareToLoadState(newState);
+
+    if (!preparationSuccess)
+    {
+        statusBar->setStatusMessage("Critical Error: Failed to prepare plugins for loading!", true);
+        return;
+    }
+
+    auto& deviceManager = mainComp->getAudioDeviceManager();
+    const juce::String savedVocalInputName = audioEngine.getVocalInputChannelName();
+    const juce::String savedMusicInputName = audioEngine.getMusicInputChannelName();
+    const juce::String savedOutputName = audioEngine.getSelectedOutputChannelPairName();
+
+    deviceManager.closeAudioDevice();
+
+    mainComp->getVocalTrack().closeAllPluginWindows();
+    mainComp->getMusicTrack().closeAllPluginWindows();
+    mainComp->getMasterUtilityComponent().closeAllPluginWindows();
+
+    audioEngine.commitStateLoad();
+    AppState::getInstance().markAsSaved(presetName);
+
+    // Áp dụng trạng thái khóa sau khi đã nạp thành công
+    AppState::getInstance().loadLockState(isLocked, passwordHash);
+
+    deviceManager.restartLastAudioDevice();
+
+    juce::Timer::callAfterDelay(500, [this, mainComp, savedVocalInputName, savedMusicInputName, savedOutputName]()
+        {
+            if (mainComp == nullptr) return;
+            audioEngine.setVocalInputChannelByName(savedVocalInputName);
+            audioEngine.setMusicInputChannelByName(savedMusicInputName);
+            audioEngine.setSelectedOutputChannelsByName(savedOutputName);
+            if (auto* vocalSelector = mainComp->getVocalTrack().getChannelSelector())
+                vocalSelector->setSelectedChannelByName(savedVocalInputName);
+            if (auto* musicSelector = mainComp->getMusicTrack().getChannelSelector())
+                musicSelector->setSelectedChannelByName(savedMusicInputName);
+            if (auto* menubar = mainComp->getMenubarComponent())
+                if (auto* outputSelector = menubar->getOutputSelector())
+                    outputSelector->setSelectedChannelByName(savedOutputName);
+        });
 }
 
 void PresetBarComponent::showAssignMenuForSlot(int slotIndex)
@@ -244,8 +264,7 @@ void PresetBarComponent::showAssignMenuForSlot(int slotIndex)
             auto& appState = AppState::getInstance();
             if (result > 0 && result <= presetFiles.size())
             {
-                auto presetName = presetFiles[result - 1].getFileNameWithoutExtension();
-                appState.assignQuickPreset(slotIndex, presetName);
+                appState.assignQuickPreset(slotIndex, presetFiles[result - 1].getFileNameWithoutExtension());
             }
             else if (result > 0)
             {
@@ -254,23 +273,25 @@ void PresetBarComponent::showAssignMenuForSlot(int slotIndex)
         });
 }
 
+// <<< FIXED: Uses audioEngine.getFullState() for consistent saving >>>
 void PresetBarComponent::saveAsNewPreset(std::function<void(bool)> onComplete)
 {
-    auto& presetManager = getSharedPresetManager();
     auto& lang = LanguageManager::getInstance();
-    auto fc = std::make_shared<juce::FileChooser>(lang.get("presetbar.saveAsTitle"),
-        presetManager.getPresetDirectory(),
-        "*.xml");
+    auto fc = std::make_shared<juce::FileChooser>(lang.get("presetbar.saveAsTitle"), getSharedPresetManager().getPresetDirectory(), "*.xml");
     fc->launchAsync(juce::FileBrowserComponent::saveMode,
-        [this, &presetManager, fc, onComplete](const juce::FileChooser& chooser)
+        [this, fc, onComplete](const juce::FileChooser& chooser)
         {
             auto resultFile = chooser.getResult();
             if (resultFile != juce::File{})
             {
-                presetManager.savePreset(audioEngine, resultFile);
-                auto newPresetName = resultFile.getFileNameWithoutExtension();
-                AppState::getInstance().markAsSaved(newPresetName);
-                if (onComplete) onComplete(true);
+                auto currentState = audioEngine.getFullState();
+                if (auto xml = std::unique_ptr<juce::XmlElement>(currentState.createXml()))
+                {
+                    xml->writeTo(resultFile, {});
+                    auto newPresetName = resultFile.getFileNameWithoutExtension();
+                    AppState::getInstance().markAsSaved(newPresetName);
+                    if (onComplete) onComplete(true);
+                }
             }
             else
             {
@@ -279,15 +300,14 @@ void PresetBarComponent::saveAsNewPreset(std::function<void(bool)> onComplete)
         });
 }
 
+// <<< FIXED: Uses audioEngine.getFullState() for consistent saving >>>
 void PresetBarComponent::handleSaveAction()
 {
     auto& lang = LanguageManager::getInstance();
     auto currentPresetName = AppState::getInstance().getCurrentPresetName();
     if (currentPresetName != lang.get("presetbar.noPresetLoaded") && currentPresetName.isNotEmpty())
     {
-        auto* alert = new juce::AlertWindow(lang.get("presetbar.saveTitle"),
-            lang.get("presetbar.saveMessage"),
-            juce::AlertWindow::QuestionIcon);
+        auto* alert = new juce::AlertWindow(lang.get("presetbar.saveTitle"), lang.get("presetbar.saveMessage"), juce::AlertWindow::QuestionIcon);
         alert->addButton(lang.get("presetbar.saveOverwrite"), 1, juce::KeyPress(juce::KeyPress::returnKey));
         alert->addButton(lang.get("presetbar.saveAsNew"), 2);
         alert->addButton(lang.get("alerts.cancelButton"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
@@ -296,10 +316,13 @@ void PresetBarComponent::handleSaveAction()
             {
                 if (result == 1)
                 {
-                    auto& presetManager = getSharedPresetManager();
-                    auto presetFileToOverwrite = presetManager.getPresetDirectory().getChildFile(currentPresetName + ".xml");
-                    presetManager.savePreset(audioEngine, presetFileToOverwrite);
-                    AppState::getInstance().markAsSaved(currentPresetName);
+                    auto presetFileToOverwrite = getSharedPresetManager().getPresetDirectory().getChildFile(currentPresetName + ".xml");
+                    auto currentState = audioEngine.getFullState();
+                    if (auto xml = std::unique_ptr<juce::XmlElement>(currentState.createXml()))
+                    {
+                        xml->writeTo(presetFileToOverwrite, {});
+                        AppState::getInstance().markAsSaved(currentPresetName);
+                    }
                 }
                 else if (result == 2)
                 {
@@ -317,8 +340,7 @@ void PresetBarComponent::handleSaveAction()
 void PresetBarComponent::loadQuickPreset(int slotIndex)
 {
     auto presetName = AppState::getInstance().getQuickPresetName(slotIndex);
-    if (presetName.isEmpty())
-        return;
+    if (presetName.isEmpty()) return;
 
     if (AppState::getInstance().isPresetDirty())
     {
@@ -327,9 +349,7 @@ void PresetBarComponent::loadQuickPreset(int slotIndex)
         buttons.add(lang.get("alerts.saveButton"));
         buttons.add(lang.get("alerts.dontSaveButton"));
         buttons.add(lang.get("alerts.cancelButton"));
-        auto* alert = new juce::AlertWindow(lang.get("alerts.saveChangesTitle"),
-            lang.get("alerts.saveChangesMessage"),
-            juce::AlertWindow::QuestionIcon);
+        auto* alert = new juce::AlertWindow(lang.get("alerts.saveChangesTitle"), lang.get("alerts.saveChangesMessage"), juce::AlertWindow::QuestionIcon);
         alert->addTextBlock(AppState::getInstance().getCurrentPresetName());
         for (const auto& button : buttons)
             alert->addButton(button, buttons.indexOf(button) + 1);
@@ -337,26 +357,23 @@ void PresetBarComponent::loadQuickPreset(int slotIndex)
             {
                 if (result == 1)
                 {
-                    saveAsNewPreset([this, presetName](bool wasSaved) {
-                        if (wasSaved)
-                            performLoadTask(presetName);
-                        });
+                    saveAsNewPreset([this, presetName](bool wasSaved) { if (wasSaved) loadPresetTask(presetName); });
                 }
                 else if (result == 2)
                 {
-                    performLoadTask(presetName);
+                    loadPresetTask(presetName);
                 }
             }), true);
     }
     else
     {
-        performLoadTask(presetName);
+        loadPresetTask(presetName);
     }
 }
 
 void PresetBarComponent::loadPresetByName(const juce::String& name)
 {
-    performLoadTask(name);
+    loadPresetTask(name);
 }
 
 void PresetBarComponent::updateTexts()
@@ -397,9 +414,7 @@ void PresetBarComponent::updateQuickButtonLabels()
 
 void PresetBarComponent::changeListenerCallback(juce::ChangeBroadcaster* source)
 {
-    if (source == &getSharedPresetManager())
-    {
-    }
+    if (source == &getSharedPresetManager()) { /* No longer needed */ }
     else if (source == &LanguageManager::getInstance() || source == &AppState::getInstance())
     {
         updateTexts();

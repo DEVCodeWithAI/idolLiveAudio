@@ -1,3 +1,10 @@
+/*
+  ==============================================================================
+
+    AudioEngine.h
+
+  ==============================================================================
+*/
 #pragma once
 
 #include "JuceHeader.h"
@@ -89,55 +96,45 @@ public:
     TrackProcessor* getFxProcessorForVocal(int index);
     TrackProcessor* getFxProcessorForMusic(int index);
 
-    // Biến lấy (sampleRate, bufferSize)
     double getStableSampleRate() const { return stableSampleRate; }
     int getStableBlockSize() const { return stableBlockSize; }
+
+    // <<< ADDED: New methods for robust state management >>>
+    juce::ValueTree getFullState();
+    bool prepareToLoadState(const juce::ValueTree& newState);
+    void commitStateLoad();
+    bool tryHotSwapState(const juce::ValueTree& newState);
+
 
 private:
     void prepareAllProcessors(double sampleRate, int samplesPerBlock);
 
     juce::AudioDeviceManager& deviceManager;
-
-    // State variables
     double stableSampleRate = 0.0;
     int stableBlockSize = 0;
     double currentSampleRate = 0.0;
     int currentBlockSize = 0;
     std::atomic<int> vocalInputChannel = -1, musicInputLeftChannel = -1, musicInputRightChannel = -1;
     std::atomic<int> selectedOutputLeftChannel = -1, selectedOutputRightChannel = -1;
-
-    // Processors
     TrackProcessor vocalProcessor{ Identifiers::VocalProcessorState };
     TrackProcessor musicProcessor{ Identifiers::MusicProcessorState };
     MasterProcessor masterProcessor{ Identifiers::MasterProcessorState };
-
-    // FX Chains
     FXChain vocalFxChain;
     FXChain musicFxChain;
-
-    // Mixers
     std::unique_ptr<IdolAZ::SoundPlayer> soundPlayer;
     juce::MixerAudioSource soundboardMixer;
     juce::MixerAudioSource directOutputMixer;
-
-    // Audio Buffers
     juce::AudioBuffer<float> vocalBuffer, musicStereoBuffer, mixBuffer, soundboardBuffer, directOutputBuffer, fxSendBuffer;
     std::array<juce::AudioBuffer<float>, 4> vocalFxReturnBuffers;
     std::array<juce::AudioBuffer<float>, 4> musicFxReturnBuffers;
     juce::AudioBuffer<float> vocalPlayerBuffer, musicPlayerBuffer;
-
-    // Master Rec & Play members
     juce::AudioFormatManager formatManager;
     std::unique_ptr<AudioRecorder> audioRecorder;
     std::unique_ptr<juce::AudioFormatReaderSource> currentPlaybackReader;
     juce::AudioTransportSource playbackSource;
-
-    // Track Player/Recorder members
     std::unique_ptr<juce::AudioFormatReaderSource> vocalTrackReader, musicTrackReader;
     juce::AudioTransportSource vocalTrackSource, musicTrackSource;
     std::unique_ptr<AudioRecorder> vocalTrackRecorder, musicTrackRecorder;
-
-    // Project Record members
     std::unique_ptr<AudioRecorder> rawVocalRecorder;
     std::unique_ptr<AudioRecorder> rawMusicRecorder;
     std::atomic<bool> isProjectPlaybackMode{ false };
@@ -145,8 +142,6 @@ private:
     juce::File currentVocalRawFile;
     juce::File currentMusicRawFile;
     juce::ValueTree projectState{ "ProjectState" };
-
-    // Linked UI Components
     TrackComponent* vocalTrackComponent = nullptr;
     TrackComponent* musicTrackComponent = nullptr;
 

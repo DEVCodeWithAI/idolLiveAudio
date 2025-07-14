@@ -2,12 +2,13 @@
   ==============================================================================
 
     AudioEngine.cpp
-    (Fully Functional Send/Return FX Architecture)
+    (Fixed: Implemented robust two-stage preset loading orchestration)
 
   ==============================================================================
 */
 
 #include "AudioEngine.h"
+#include "../Data/AppState.h"
 #include "../GUI/Layout/TrackComponent.h"
 #include "../GUI/Layout/MasterUtilityComponent.h"
 #include "juce_audio_devices/juce_audio_devices.h"
@@ -20,18 +21,14 @@ AudioEngine::AudioEngine(juce::AudioDeviceManager& manager)
     musicFxChain(Identifiers::MusicFx1State, Identifiers::MusicFx2State, Identifiers::MusicFx3State, Identifiers::MusicFx4State)
 {
     formatManager.registerBasicFormats();
-
     audioRecorder = std::make_unique<AudioRecorder>(formatManager, "");
     vocalTrackRecorder = std::make_unique<AudioRecorder>(formatManager, "Vocal");
     musicTrackRecorder = std::make_unique<AudioRecorder>(formatManager, "Music");
     rawVocalRecorder = std::make_unique<AudioRecorder>(formatManager, "Projects");
     rawMusicRecorder = std::make_unique<AudioRecorder>(formatManager, "Projects");
-
     soundPlayer = std::make_unique<IdolAZ::SoundPlayer>();
-
     soundboardMixer.addInputSource(soundPlayer.get(), false);
     directOutputMixer.addInputSource(&playbackSource, false);
-
 }
 
 AudioEngine::~AudioEngine()
@@ -42,42 +39,31 @@ void AudioEngine::prepareAllProcessors(double sampleRate, int samplesPerBlock)
 {
     stableSampleRate = sampleRate;
     stableBlockSize = samplesPerBlock;
-
     currentSampleRate = sampleRate;
     currentBlockSize = samplesPerBlock;
-
-    DBG("AudioEngine preparing all processors with settings: "
-        << sampleRate << " Hz, " << samplesPerBlock << " samples.");
-
+    DBG("AudioEngine preparing all processors with settings: " << sampleRate << " Hz, " << samplesPerBlock << " samples.");
     juce::dsp::ProcessSpec stereoSpec{ sampleRate, static_cast<uint32_t>(samplesPerBlock), 2 };
-
     vocalProcessor.prepare(stereoSpec);
     musicProcessor.prepare(stereoSpec);
     masterProcessor.prepare(stereoSpec);
-
     for (auto& fxProc : vocalFxChain.processors) fxProc.prepare(stereoSpec);
     for (auto& fxProc : musicFxChain.processors) fxProc.prepare(stereoSpec);
-
     soundboardMixer.prepareToPlay(samplesPerBlock, sampleRate);
     directOutputMixer.prepareToPlay(samplesPerBlock, sampleRate);
     playbackSource.prepareToPlay(samplesPerBlock, sampleRate);
     vocalTrackSource.prepareToPlay(samplesPerBlock, sampleRate);
     musicTrackSource.prepareToPlay(samplesPerBlock, sampleRate);
-
     vocalBuffer.setSize(2, samplesPerBlock);
     musicStereoBuffer.setSize(2, samplesPerBlock);
     mixBuffer.setSize(2, samplesPerBlock);
     soundboardBuffer.setSize(2, samplesPerBlock);
     directOutputBuffer.setSize(2, samplesPerBlock);
-
     fxSendBuffer.setSize(2, samplesPerBlock);
     for (auto& buffer : vocalFxReturnBuffers) buffer.setSize(2, samplesPerBlock);
     for (auto& buffer : musicFxReturnBuffers) buffer.setSize(2, samplesPerBlock);
-
     vocalProcessor.reset();
     musicProcessor.reset();
     masterProcessor.reset();
-
     for (auto& fxProc : vocalFxChain.processors) fxProc.reset();
     for (auto& fxProc : musicFxChain.processors) fxProc.reset();
 }
@@ -86,11 +72,8 @@ void AudioEngine::prepareAllProcessors(double sampleRate, int samplesPerBlock)
 void AudioEngine::audioDeviceAboutToStart(juce::AudioIODevice* device)
 {
     prepareAllProcessors(device->getCurrentSampleRate(), device->getCurrentBufferSizeSamples());
-
     if (onDeviceStarted)
-    {
         juce::MessageManager::callAsync(onDeviceStarted);
-    }
 }
 
 void AudioEngine::audioDeviceStopped()
@@ -98,16 +81,13 @@ void AudioEngine::audioDeviceStopped()
     vocalProcessor.reset();
     musicProcessor.reset();
     masterProcessor.reset();
-
     for (auto& fxProc : vocalFxChain.processors) fxProc.reset();
     for (auto& fxProc : musicFxChain.processors) fxProc.reset();
-
     soundboardMixer.releaseResources();
     directOutputMixer.releaseResources();
     playbackSource.releaseResources();
     vocalTrackSource.releaseResources();
     musicTrackSource.releaseResources();
-
     currentSampleRate = 0.0;
     currentBlockSize = 0;
     vocalInputChannel.store(-1);
@@ -117,24 +97,15 @@ void AudioEngine::audioDeviceStopped()
     selectedOutputRightChannel.store(-1);
 }
 
-void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChannelData, int numInputChannels,
-    float* const* outputChannelData, int numOutputChannels,
-    int numSamples, const juce::AudioIODeviceCallbackContext& context)
+void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChannelData, int numInputChannels, float* const* outputChannelData, int numOutputChannels, int numSamples, const juce::AudioIODeviceCallbackContext& context)
 {
     juce::ignoreUnused(context);
-
-    // <<< FIX: Use deviceManager to get the current device safely >>>
     if (auto* currentDevice = deviceManager.getCurrentAudioDevice())
     {
         if (numSamples != currentBlockSize || currentDevice->getCurrentSampleRate() != currentSampleRate)
-        {
             prepareAllProcessors(currentDevice->getCurrentSampleRate(), numSamples);
-        }
     }
-
     juce::ScopedNoDenormals noDenormals;
-
-    // --- 1. Xóa tất cả các buffer làm việc ---
     vocalBuffer.clear();
     musicStereoBuffer.clear();
     mixBuffer.clear();
@@ -142,22 +113,14 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChan
     directOutputBuffer.clear();
     for (auto& buffer : vocalFxReturnBuffers) buffer.clear();
     for (auto& buffer : musicFxReturnBuffers) buffer.clear();
-
     vocalPlayerBuffer.setSize(2, numSamples);
     musicPlayerBuffer.setSize(2, numSamples);
     vocalPlayerBuffer.clear();
     musicPlayerBuffer.clear();
-
-
-    // --- 2. Lấy tín hiệu từ các Player của Track ---
     juce::AudioSourceChannelInfo vocalPlayerInfo(&vocalPlayerBuffer, 0, numSamples);
     vocalTrackSource.getNextAudioBlock(vocalPlayerInfo);
-
     juce::AudioSourceChannelInfo musicPlayerInfo(&musicPlayerBuffer, 0, numSamples);
     musicTrackSource.getNextAudioBlock(musicPlayerInfo);
-
-
-    // --- 3. Xử lý Track Vocal ---
     const int currentVocalIn = vocalInputChannel.load();
     if (juce::isPositiveAndBelow(currentVocalIn, numInputChannels))
     {
@@ -170,13 +133,9 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChan
     vocalBuffer.addFrom(1, 0, vocalPlayerBuffer, 1, 0, numSamples);
     vocalProcessor.process(vocalBuffer);
     vocalTrackRecorder->processBlock(vocalBuffer, currentSampleRate);
-
-
-    // --- 4. Xử lý Track Music ---
     const int currentMusicLeftIn = musicInputLeftChannel.load();
     const int currentMusicRightIn = musicInputRightChannel.load();
-    if (juce::isPositiveAndBelow(currentMusicLeftIn, numInputChannels) &&
-        juce::isPositiveAndBelow(currentMusicRightIn, numInputChannels))
+    if (juce::isPositiveAndBelow(currentMusicLeftIn, numInputChannels) && juce::isPositiveAndBelow(currentMusicRightIn, numInputChannels))
     {
         juce::AudioBuffer<float> rawInput(const_cast<float**>(inputChannelData) + currentMusicLeftIn, 2, numSamples);
         musicStereoBuffer.copyFrom(0, 0, rawInput, 0, 0, numSamples);
@@ -187,14 +146,8 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChan
     musicStereoBuffer.addFrom(1, 0, musicPlayerBuffer, 1, 0, numSamples);
     musicProcessor.process(musicStereoBuffer);
     musicTrackRecorder->processBlock(musicStereoBuffer, currentSampleRate);
-
-
-    // --- 5. Lấy tín hiệu từ Soundboard ---
     juce::AudioSourceChannelInfo soundboardChannelInfo(&soundboardBuffer, 0, numSamples);
     soundboardMixer.getNextAudioBlock(soundboardChannelInfo);
-
-
-    // --- 6. Xử lý FX Sends/Returns ---
     for (int i = 0; i < 4; ++i)
     {
         fxSendBuffer.copyFrom(0, 0, vocalBuffer, 0, 0, numSamples);
@@ -215,20 +168,13 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChan
         musicFxReturnBuffers[i].copyFrom(1, 0, fxSendBuffer, 1, 0, numSamples);
         musicFxReturnBuffers[i].applyGain(musicFxChain.processors[i].getReturnLevel());
     }
-
-
-    // --- 7. Tổng hợp tất cả vào Kênh Master ---
     mixBuffer.clear();
-
     mixBuffer.copyFrom(0, 0, vocalBuffer, 0, 0, numSamples);
     mixBuffer.copyFrom(1, 0, vocalBuffer, 1, 0, numSamples);
-
     mixBuffer.addFrom(0, 0, musicStereoBuffer, 0, 0, numSamples);
     mixBuffer.addFrom(1, 0, musicStereoBuffer, 1, 0, numSamples);
-
     mixBuffer.addFrom(0, 0, soundboardBuffer, 0, 0, numSamples);
     mixBuffer.addFrom(1, 0, soundboardBuffer, 1, 0, numSamples);
-
     for (int i = 0; i < 4; ++i)
     {
         mixBuffer.addFrom(0, 0, vocalFxReturnBuffers[i], 0, 0, numSamples);
@@ -239,22 +185,14 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChan
         mixBuffer.addFrom(0, 0, musicFxReturnBuffers[i], 0, 0, numSamples);
         mixBuffer.addFrom(1, 0, musicFxReturnBuffers[i], 1, 0, numSamples);
     }
-
     masterProcessor.process(mixBuffer);
     audioRecorder->processBlock(mixBuffer, currentSampleRate);
-
-
-    // --- 8. Lấy tín hiệu đi thẳng ra Output (Player của REC & PLAY) ---
     juce::AudioSourceChannelInfo directOutputChannelInfo(&directOutputBuffer, 0, numSamples);
     directOutputMixer.getNextAudioBlock(directOutputChannelInfo);
-
-
-    // --- 9. Gửi tín hiệu cuối cùng ra loa ---
     const int currentOutputLeft = selectedOutputLeftChannel.load();
     const int currentOutputRight = selectedOutputRightChannel.load();
     for (int i = 0; i < numOutputChannels; ++i)
         juce::FloatVectorOperations::clear(outputChannelData[i], numSamples);
-
     if (juce::isPositiveAndBelow(currentOutputLeft, numOutputChannels))
     {
         juce::FloatVectorOperations::copy(outputChannelData[currentOutputLeft], mixBuffer.getReadPointer(0), numSamples);
@@ -672,4 +610,75 @@ bool AudioEngine::isProjectPlaybackActive() const
 juce::ValueTree& AudioEngine::getProjectState()
 {
     return projectState;
+}
+
+void AudioEngine::setPlaybackGain(float newGain)
+{
+    playbackSource.setGain(newGain);
+}
+
+float AudioEngine::getPlaybackGain() const
+{
+    return playbackSource.getGain();
+}
+
+juce::ValueTree AudioEngine::getFullState()
+{
+    juce::ValueTree state("Preset");
+    state.addChild(vocalProcessor.getState(), -1, nullptr);
+    state.addChild(musicProcessor.getState(), -1, nullptr);
+    state.addChild(masterProcessor.getState(), -1, nullptr);
+    for (int i = 0; i < 4; ++i)
+    {
+        if (auto* p = getFxProcessorForVocal(i)) state.addChild(p->getState(), -1, nullptr);
+        if (auto* p = getFxProcessorForMusic(i)) state.addChild(p->getState(), -1, nullptr);
+    }
+
+    auto& appState = AppState::getInstance();
+    const bool isLocked = appState.isSystemLocked();
+    state.setProperty(Identifiers::lockState, isLocked, nullptr);
+    if (isLocked)
+    {
+        state.setProperty(Identifiers::lockPasswordHash, appState.getPasswordHash(), nullptr);
+    }
+
+    return state;
+}
+
+bool AudioEngine::prepareToLoadState(const juce::ValueTree& newState)
+{
+    if (!vocalProcessor.prepareToLoadState(newState)) return false;
+    if (!musicProcessor.prepareToLoadState(newState)) return false;
+    if (!masterProcessor.prepareToLoadState(newState)) return false;
+    for (int i = 0; i < 4; ++i)
+    {
+        if (auto* p = getFxProcessorForVocal(i)) { if (!p->prepareToLoadState(newState)) return false; }
+        if (auto* p = getFxProcessorForMusic(i)) { if (!p->prepareToLoadState(newState)) return false; }
+    }
+    return true;
+}
+
+void AudioEngine::commitStateLoad()
+{
+    vocalProcessor.commitStateLoad();
+    musicProcessor.commitStateLoad();
+    masterProcessor.commitStateLoad();
+    for (int i = 0; i < 4; ++i)
+    {
+        if (auto* p = getFxProcessorForVocal(i)) p->commitStateLoad();
+        if (auto* p = getFxProcessorForMusic(i)) p->commitStateLoad();
+    }
+}
+
+bool AudioEngine::tryHotSwapState(const juce::ValueTree& newState)
+{
+    if (!vocalProcessor.tryHotSwapState(newState)) return false;
+    if (!musicProcessor.tryHotSwapState(newState)) return false;
+    if (!masterProcessor.tryHotSwapState(newState)) return false;
+    for (int i = 0; i < 4; ++i)
+    {
+        if (auto* p = getFxProcessorForVocal(i)) { if (!p->tryHotSwapState(newState)) return false; }
+        if (auto* p = getFxProcessorForMusic(i)) { if (!p->tryHotSwapState(newState)) return false; }
+    }
+    return true;
 }

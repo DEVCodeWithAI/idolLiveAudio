@@ -1,5 +1,14 @@
 // Source/Data/PluginManager/PluginManager.cpp
 
+// <<< ADD THIS BLOCK AT THE VERY TOP OF THE FILE >>>
+#if JUCE_DEBUG
+// Override the jassert macro to throw an exception instead of halting.
+// This allows our try-catch blocks to handle problematic plugins during scanning/loading.
+#undef jassert
+#define jassert(expression)  if (!(expression)) { throw std::runtime_error ( "jassert failed: " #expression ); }
+#endif
+// <<< END OF ADDED BLOCK >>>
+
 #include "Data/PluginManager/PluginManager.h"
 #include "Data/PluginManager/WavesShellManager.h"
 

@@ -2,7 +2,7 @@
   ==============================================================================
 
     ProcessorBase.cpp
-    (Definitive fix with full initialization logic in setState and safe removal)
+    (Fixed: Implemented robust, two-stage preset loading)
 
   ==============================================================================
 */
@@ -11,7 +11,6 @@
 #include "../Application/Application.h" 
 #include "../Data/AppState.h"
 
-// <<< ADDED: Identifiers for new properties >>>
 namespace IDs
 {
     const juce::Identifier PLUGIN_CHAIN("PluginChain");
@@ -19,13 +18,13 @@ namespace IDs
     const juce::Identifier uid("uid");
     const juce::Identifier state("state");
     const juce::Identifier bypassed("bypassed");
-
     const juce::Identifier sendLevel("sendLevel");
     const juce::Identifier returnLevel("returnLevel");
 }
 
 ProcessorBase::ProcessorBase(const juce::Identifier& id)
-    : processorId(id)
+    : processorId(id),
+    processSpec{ 0.0, 0, 0 }
 {
     gain.setGainDecibels(0.0f);
 }
@@ -43,7 +42,6 @@ ProcessorBase::~ProcessorBase()
             {
                 DBG("Suspending plugin before destruction: " << plugin->getName());
                 plugin->suspendProcessing(true);
-
                 const auto name = plugin->getName().toLowerCase();
                 if (name.contains("waves") || name.contains("wave"))
                 {
@@ -57,21 +55,14 @@ ProcessorBase::~ProcessorBase()
             }
         }
     }
-
     pluginChain.clear();
 }
 
 void ProcessorBase::prepare(const juce::dsp::ProcessSpec& spec)
 {
-    DBG("ProcessorBase::prepare() called for '" << processorId.toString()
-        << "' with Sample Rate: " << spec.sampleRate
-        << ", Block Size: " << spec.maximumBlockSize);
-
     const juce::ScopedLock sl(pluginLock);
     this->processSpec = spec;
-
     gain.prepare(spec);
-
     tempBuffer.setSize(8, spec.maximumBlockSize);
 
     for (auto* plugin : pluginChain)
@@ -81,28 +72,23 @@ void ProcessorBase::prepare(const juce::dsp::ProcessSpec& spec)
     reset();
 }
 
-// <<< MODIFIED: Replaced sleep() with a more robust suspend/resume logic >>>
-void ProcessorBase::setState(const juce::ValueTree& newState)
+void ProcessorBase::setState(const juce::ValueTree& processorState)
 {
     const juce::ScopedLock sl(pluginLock);
 
-    if (processSpec.sampleRate <= 0)
-    {
-        DBG("ERROR: Cannot restore plugin state for '" << processorId.toString()
-            << "'. The processor has not been prepared yet (Sample Rate is 0).");
-        return;
-    }
+    if (processSpec.sampleRate <= 0) return;
+    if (!processorState.hasType(processorId)) return;
 
-    setSendLevel(newState.getProperty(IDs::sendLevel, 1.0f));
-    setReturnLevel(newState.getProperty(IDs::returnLevel, 1.0f));
+    setSendLevel(processorState.getProperty(IDs::sendLevel, 1.0f));
+    setReturnLevel(processorState.getProperty(IDs::returnLevel, 1.0f));
 
     pluginChain.clear();
     pluginBypassState.clear();
 
-    juce::ValueTree pluginChainState = newState.getChildWithName(IDs::PLUGIN_CHAIN);
+    juce::ValueTree pluginChainState = processorState.getChildWithName(IDs::PLUGIN_CHAIN);
     if (!pluginChainState.isValid())
     {
-        sendChangeMessage(); // Gửi thông báo để UI cập nhật dù không có plugin
+        sendChangeMessage();
         return;
     }
 
@@ -115,6 +101,8 @@ void ProcessorBase::setState(const juce::ValueTree& newState)
         if (uidToFind == 0) continue;
 
         auto& pluginManager = getSharedPluginManager();
+
+        // <<< FIXED: Correct search logic >>>
         juce::PluginDescription desc;
         bool found = false;
         for (const auto& knownDesc : pluginManager.getKnownPlugins())
@@ -126,56 +114,45 @@ void ProcessorBase::setState(const juce::ValueTree& newState)
                 break;
             }
         }
-
         if (!found)
         {
-            DBG("Plugin with UID " + juce::String(uidToFind) + " not found in known plugins list. Skipping.");
-            continue;
+            continue; // Plugin not found
         }
 
-        DBG("Loading plugin " + juce::String(i + 1) + "/" + juce::String(pluginChainState.getNumChildren()) + ": " + desc.name);
-        if (auto instance = pluginManager.createPluginInstance(desc, processSpec))
+        try
         {
-            // <<< LOGIC MỚI: Tạm dừng plugin trước khi cấu hình >>>
-            instance->suspendProcessing(true);
-
-            instance->prepareToPlay(processSpec.sampleRate, (int)processSpec.maximumBlockSize);
-
-            DBG("  - Restoring state for: " + instance->getName());
-            try
+            if (auto instance = pluginManager.createPluginInstance(desc, processSpec))
             {
-                auto base64State = pluginState.getProperty(IDs::state).toString();
-                juce::MemoryBlock internalState;
-                if (internalState.fromBase64Encoding(base64State))
-                    instance->setStateInformation(internalState.getData(), (int)internalState.getSize());
+                instance->suspendProcessing(true);
+                instance->prepareToPlay(processSpec.sampleRate, (int)processSpec.maximumBlockSize);
+                if (pluginState.hasProperty(IDs::state))
+                {
+                    auto base64State = pluginState.getProperty(IDs::state).toString();
+                    if (!base64State.isEmpty())
+                    {
+                        juce::MemoryBlock internalState;
+                        if (internalState.fromBase64Encoding(base64State))
+                            instance->setStateInformation(internalState.getData(), (int)internalState.getSize());
+                    }
+                }
+                instance->suspendProcessing(false);
+                if ((bool)pluginState.getProperty(IDs::bypassed, false))
+                    pluginBypassState.insert(pluginChain.size());
+                pluginChain.add(std::move(instance));
             }
-            catch (...)
-            {
-                DBG("  - CRITICAL: Plugin '" << instance->getName() << "' threw an exception while restoring state. Skipping this plugin.");
-                continue; // Bỏ qua plugin này và tiếp tục với plugin tiếp theo
-            }
-
-            // <<< LOGIC MỚI: Kích hoạt lại plugin sau khi đã cấu hình xong >>>
-            instance->suspendProcessing(false);
-
-            bool bypassed = pluginState.getProperty(IDs::bypassed, false);
-            if (bypassed)
-                pluginBypassState.insert(pluginChain.size());
-
-            pluginChain.add(std::move(instance));
-            DBG("  - Successfully loaded and added to chain.");
+        }
+        catch (...)
+        {
+            DBG("Exception loading plugin in setState: " << desc.name);
         }
     }
-
     sendChangeMessage();
 }
 
 juce::ValueTree ProcessorBase::getState() const
 {
     const juce::ScopedLock sl(pluginLock);
-
     juce::ValueTree state(processorId);
-
     state.setProperty(IDs::sendLevel, getSendLevel(), nullptr);
     state.setProperty(IDs::returnLevel, getReturnLevel(), nullptr);
 
@@ -184,21 +161,19 @@ juce::ValueTree ProcessorBase::getState() const
 
     for (int i = 0; i < pluginChain.size(); ++i)
     {
-        auto* plugin = pluginChain.getUnchecked(i);
-        if (plugin == nullptr) continue;
+        if (auto* plugin = pluginChain.getUnchecked(i))
+        {
+            juce::ValueTree pluginState(IDs::PLUGIN);
+            pluginState.setProperty(IDs::uid, (int)plugin->getPluginDescription().uniqueId, nullptr);
 
-        juce::ValueTree pluginState(IDs::PLUGIN);
-        pluginState.setProperty(IDs::uid, (int)plugin->getPluginDescription().uniqueId, nullptr);
+            juce::MemoryBlock internalState;
+            plugin->getStateInformation(internalState);
+            pluginState.setProperty(IDs::state, internalState.toBase64Encoding(), nullptr);
 
-        juce::MemoryBlock internalState;
-        plugin->getStateInformation(internalState);
-        pluginState.setProperty(IDs::state, internalState.toBase64Encoding(), nullptr);
-
-        pluginState.setProperty(IDs::bypassed, isPluginBypassed(i), nullptr);
-
-        pluginChainState.addChild(pluginState, -1, nullptr);
+            pluginState.setProperty(IDs::bypassed, isPluginBypassed(i), nullptr);
+            pluginChainState.addChild(pluginState, -1, nullptr);
+        }
     }
-
     return state;
 }
 
@@ -219,9 +194,7 @@ void ProcessorBase::process(juce::AudioBuffer<float>& buffer)
         juce::MidiBuffer emptyMidi;
         for (int i = 0; i < pluginChain.size(); ++i)
         {
-            if (isPluginBypassed(i))
-                continue;
-
+            if (isPluginBypassed(i)) continue;
             if (auto* plugin = pluginChain.getUnchecked(i))
             {
                 try
@@ -234,13 +207,10 @@ void ProcessorBase::process(juce::AudioBuffer<float>& buffer)
                     {
                         tempBuffer.setSize(juce::jmax(requiredInputs, requiredOutputs), buffer.getNumSamples(), false, true, true);
                         tempBuffer.clear();
-
                         int chansToCopyIn = juce::jmin(hostChannels, requiredInputs);
                         for (int ch = 0; ch < chansToCopyIn; ++ch)
                             tempBuffer.copyFrom(ch, 0, buffer, ch, 0, buffer.getNumSamples());
-
                         plugin->processBlock(tempBuffer, emptyMidi);
-
                         buffer.clear();
                         int chansToCopyOut = juce::jmin(hostChannels, requiredOutputs);
                         for (int ch = 0; ch < chansToCopyOut; ++ch)
@@ -251,10 +221,7 @@ void ProcessorBase::process(juce::AudioBuffer<float>& buffer)
                         plugin->processBlock(buffer, emptyMidi);
                     }
                 }
-                catch (...)
-                {
-                    DBG("!!! Unknown exception caught while processing plugin: " << plugin->getName());
-                }
+                catch (...) { /* ... */ }
             }
         }
     }
@@ -274,17 +241,13 @@ void ProcessorBase::process(juce::AudioBuffer<float>& buffer)
 void ProcessorBase::addPlugin(std::unique_ptr<juce::AudioPluginInstance> newPlugin)
 {
     if (newPlugin == nullptr) return;
-
     const juce::ScopedLock sl(pluginLock);
-
     if (processSpec.sampleRate > 0)
     {
         newPlugin->prepareToPlay(processSpec.sampleRate, (int)processSpec.maximumBlockSize);
         newPlugin->reset();
     }
-
     pluginChain.add(std::move(newPlugin));
-
     AppState::getInstance().setPresetDirty(true);
     sendChangeMessage();
 }
@@ -293,30 +256,25 @@ void ProcessorBase::reset()
 {
     const juce::ScopedLock sl(pluginLock);
     gain.reset();
-    for (auto* plugin : pluginChain)
-        plugin->reset();
+    for (auto* plugin : pluginChain) plugin->reset();
 }
 
 void ProcessorBase::removePlugin(int index)
 {
     const juce::ScopedLock sl(pluginLock);
-    if (!isPositiveAndBelow(index, pluginChain.size()))
-        return;
-
+    if (!isPositiveAndBelow(index, pluginChain.size())) return;
     if (auto* plugin = pluginChain.getUnchecked(index))
     {
         try
         {
             DBG("Preparing to safely remove plugin: " << plugin->getName());
             plugin->suspendProcessing(true);
-
             const auto name = plugin->getName().toLowerCase();
             if (name.contains("waves") || name.contains("wave"))
             {
                 DBG("Detected Waves plugin. Sleeping briefly to allow thread cleanup...");
                 juce::Thread::sleep(500);
             }
-
             if (plugin->hasEditor())
             {
                 if (auto* editor = plugin->getActiveEditor())
@@ -331,10 +289,8 @@ void ProcessorBase::removePlugin(int index)
             DBG("Exception during plugin suspend or editor close before removal.");
         }
     }
-
     pluginBypassState.erase(index);
     pluginChain.remove(index);
-
     AppState::getInstance().setPresetDirty(true);
     sendChangeMessage();
 }
@@ -376,7 +332,6 @@ void ProcessorBase::setPluginBypassed(int pluginIndex, bool shouldBeBypassed)
             pluginBypassState.insert(pluginIndex);
         else
             pluginBypassState.erase(pluginIndex);
-
         AppState::getInstance().setPresetDirty(true);
     }
 }
@@ -412,12 +367,176 @@ float ProcessorBase::getGain() const { return gain.getGainDecibels(); }
 void ProcessorBase::setMuted(bool shouldBeMuted) { muted = shouldBeMuted; }
 bool ProcessorBase::isMuted() const { return muted.load(); }
 
-void ProcessorBase::setLevelSource(std::atomic<float>* newLevelSource)
-{
-    levelSource.store(newLevelSource);
-}
-
+void ProcessorBase::setLevelSource(std::atomic<float>* newLevelSource) { levelSource.store(newLevelSource); }
 void ProcessorBase::setSendLevel(float newLevel0To1) { sendLevel.store(newLevel0To1); }
 float ProcessorBase::getSendLevel() const { return sendLevel.load(); }
 void ProcessorBase::setReturnLevel(float newLevel0To1) { returnLevel.store(newLevel0To1); }
 float ProcessorBase::getReturnLevel() const { return returnLevel.load(); }
+
+bool ProcessorBase::isPluginChainIdentical(const juce::ValueTree& newState) const
+{
+    const juce::ScopedLock sl(pluginLock);
+    const juce::ValueTree newProcessorState = newState.getChildWithName(processorId);
+
+    if (!newProcessorState.isValid())
+        return getNumPlugins() == 0;
+
+    const juce::ValueTree newPluginChainState = newProcessorState.getChildWithName(IDs::PLUGIN_CHAIN);
+
+    if (getNumPlugins() != newPluginChainState.getNumChildren())
+        return false;
+
+    for (int i = 0; i < getNumPlugins(); ++i)
+    {
+        const auto* currentPlugin = getPlugin(i);
+        const juce::ValueTree newPluginState = newPluginChainState.getChild(i);
+        if (currentPlugin == nullptr || !newPluginState.isValid()) return false;
+        if ((int)currentPlugin->getPluginDescription().uniqueId != (int)newPluginState.getProperty(IDs::uid, 0))
+            return false;
+    }
+    return true;
+}
+
+bool ProcessorBase::tryHotSwapState(const juce::ValueTree& newState)
+{
+    const juce::ScopedLock sl(pluginLock);
+    const juce::ValueTree newProcessorState = newState.getChildWithName(processorId);
+    if (!newProcessorState.isValid()) return true;
+
+    const juce::ValueTree newPluginChainState = newProcessorState.getChildWithName(IDs::PLUGIN_CHAIN);
+    if (!newPluginChainState.isValid()) return true;
+    jassert(getNumPlugins() == newPluginChainState.getNumChildren());
+    setSendLevel(newProcessorState.getProperty(IDs::sendLevel, 1.0f));
+    setReturnLevel(newProcessorState.getProperty(IDs::returnLevel, 1.0f));
+
+    for (int i = 0; i < getNumPlugins(); ++i)
+    {
+        auto* plugin = getPlugin(i);
+        const juce::ValueTree newPluginState = newPluginChainState.getChild(i);
+        try
+        {
+            if (newPluginState.hasProperty(IDs::state))
+            {
+                auto base64State = newPluginState.getProperty(IDs::state).toString();
+                if (!base64State.isEmpty())
+                {
+                    juce::MemoryBlock internalState;
+                    if (internalState.fromBase64Encoding(base64State))
+                        plugin->setStateInformation(internalState.getData(), (int)internalState.getSize());
+                }
+            }
+            setPluginBypassed(i, newPluginState.getProperty(IDs::bypassed, false));
+        }
+        catch (...)
+        {
+            DBG("HOT-SWAP FAILED for plugin '" << plugin->getName() << "'.");
+            return false;
+        }
+    }
+    sendChangeMessage();
+    return true;
+}
+
+// ==============================================================================
+// <<< IMPLEMENTATION of the new robust loading methods >>>
+// ==============================================================================
+
+bool ProcessorBase::prepareToLoadState(const juce::ValueTree& newState)
+{
+    const juce::ValueTree processorState = newState.getChildWithName(processorId);
+
+    preparedSendLevel = processorState.getProperty(IDs::sendLevel, 1.0f);
+    preparedReturnLevel = processorState.getProperty(IDs::returnLevel, 1.0f);
+
+    auto tempChain = std::make_unique<juce::OwnedArray<juce::AudioPluginInstance>>();
+    auto tempBypass = std::make_unique<std::unordered_set<int>>();
+
+    const juce::ValueTree newPluginChainState = processorState.getChildWithName(IDs::PLUGIN_CHAIN);
+    if (newPluginChainState.isValid())
+    {
+        auto& pluginManager = getSharedPluginManager();
+        for (int i = 0; i < newPluginChainState.getNumChildren(); ++i)
+        {
+            const juce::ValueTree pluginState = newPluginChainState.getChild(i);
+            if (!pluginState.hasType(IDs::PLUGIN)) continue;
+
+            const int uidToFind = pluginState.getProperty(IDs::uid, 0);
+            if (uidToFind == 0) continue;
+
+            // <<< FIXED: Correct search logic >>>
+            juce::PluginDescription desc;
+            bool found = false;
+            for (const auto& knownDesc : pluginManager.getKnownPlugins())
+            {
+                if (knownDesc.uniqueId == uidToFind)
+                {
+                    desc = knownDesc;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found)
+            {
+                DBG("Plugin with UID " << uidToFind << " not in known list. Cannot prepare.");
+                return false;
+            }
+
+            try
+            {
+                if (auto instance = pluginManager.createPluginInstance(desc, processSpec))
+                {
+                    instance->suspendProcessing(true);
+                    if (pluginState.hasProperty(IDs::state))
+                    {
+                        auto base64State = pluginState.getProperty(IDs::state).toString();
+                        if (!base64State.isEmpty())
+                        {
+                            juce::MemoryBlock internalState;
+                            if (internalState.fromBase64Encoding(base64State))
+                                instance->setStateInformation(internalState.getData(), (int)internalState.getSize());
+                        }
+                    }
+                    if ((bool)pluginState.getProperty(IDs::bypassed, false))
+                        tempBypass->insert(i);
+                    tempChain->add(std::move(instance));
+                }
+                else
+                {
+                    DBG("Failed to create prepared instance for: " << desc.name);
+                    return false;
+                }
+            }
+            catch (...)
+            {
+                DBG("Exception while preparing instance for: " << desc.name);
+                return false;
+            }
+        }
+    }
+
+    preparedPluginChain = std::move(tempChain);
+    preparedBypassState = std::move(tempBypass);
+    return true;
+}
+
+void ProcessorBase::commitStateLoad()
+{
+    const juce::ScopedLock sl(pluginLock);
+
+    setSendLevel(preparedSendLevel);
+    setReturnLevel(preparedReturnLevel);
+
+    if (preparedPluginChain)
+        pluginChain = std::move(*preparedPluginChain);
+    else
+        pluginChain.clear();
+
+    if (preparedBypassState)
+        pluginBypassState = std::move(*preparedBypassState);
+    else
+        pluginBypassState.clear();
+
+    preparedPluginChain.reset();
+    preparedBypassState.reset();
+    sendChangeMessage();
+}

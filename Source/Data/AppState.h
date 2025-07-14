@@ -1,4 +1,11 @@
-﻿#pragma once
+﻿/*
+  ==============================================================================
+
+    AppState.h
+
+  ==============================================================================
+*/
+#pragma once
 
 #include <JuceHeader.h>
 
@@ -7,7 +14,6 @@ class MainComponent;
 class AppState : public juce::ChangeBroadcaster
 {
 public:
-    // <<< ADDED: A constant for the number of slots >>>
     static constexpr int numQuickSlots = 5;
 
     static AppState& getInstance();
@@ -18,30 +24,31 @@ public:
     juce::String getCurrentPresetName() const;
     void markAsSaved(const juce::String& newName);
 
-    // --- CÁC HÀM CHO TÍNH NĂNG KHÓA ---
+    // Lock System
     void setSystemLocked(bool shouldBeLocked, const juce::String& password = {});
     bool unlockSystem(const juce::String& passwordAttempt);
     bool isSystemLocked() const;
     juce::String getPasswordHash() const;
     void loadLockState(bool isLocked, const juce::String& passwordHash);
 
-
-    // --- CÁC HÀM LƯU/TẢI SESSION ---
+    // Session State
     void saveState(MainComponent& mainComponent);
     bool loadAudioDeviceSetup(juce::AudioDeviceManager::AudioDeviceSetup& setupToFill, juce::String& loadedDeviceType);
     void loadPostDeviceState(MainComponent& mainComponent);
     juce::File getSessionFile() const;
 
-    // <<< MODIFIED: Updated comments and consistency >>>
-    /** Assigns a preset name to a quick load slot. */
+    // Quick Presets
     void assignQuickPreset(int slotIndex, const juce::String& presetName);
-    /** Gets the name of the preset assigned to a slot. */
     juce::String getQuickPresetName(int slotIndex) const;
-    /** Gets the number of available quick slots. */
     int getNumQuickPresetSlots() const;
 
+    // Loading Flag
+    void setIsLoadingPreset(bool isLoading);
+    bool isLoadingPreset() const;
+
 private:
-    void loadPresetAndWindows(MainComponent& mainComponent);
+    // This function is no longer used and has been removed.
+    // void loadPresetAndWindows(MainComponent& mainComponent);
 
     AppState();
     ~AppState() override;
@@ -51,6 +58,8 @@ private:
 
     std::atomic<bool> systemLocked{ false };
     juce::String lockPasswordHash;
+
+    std::atomic<bool> loadingPresetFlag{ false };
 
     juce::StringArray quickPresetSlots;
 

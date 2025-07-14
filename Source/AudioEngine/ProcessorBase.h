@@ -1,3 +1,11 @@
+/*
+  ==============================================================================
+
+    ProcessorBase.h
+
+  ==============================================================================
+*/
+
 #pragma once
 
 #include <JuceHeader.h>
@@ -40,6 +48,14 @@ public:
     juce::ValueTree getState() const;
     void setState(const juce::ValueTree& newState);
 
+    // Methods for smart preset loading
+    bool isPluginChainIdentical(const juce::ValueTree& newState) const;
+    bool tryHotSwapState(const juce::ValueTree& newState);
+
+    // Methods for robust, two-stage preset reloading
+    bool prepareToLoadState(const juce::ValueTree& newState);
+    void commitStateLoad();
+
 private:
     juce::Identifier processorId;
     juce::CriticalSection pluginLock;
@@ -47,6 +63,12 @@ private:
     juce::OwnedArray<juce::AudioPluginInstance> pluginChain;
     juce::dsp::Gain<float> gain;
     std::atomic<bool> muted = false;
+
+    // Temporary storage for the two-stage loading
+    std::unique_ptr<juce::OwnedArray<juce::AudioPluginInstance>> preparedPluginChain;
+    std::unique_ptr<std::unordered_set<int>> preparedBypassState;
+    float preparedSendLevel = 0.0f;
+    float preparedReturnLevel = 1.0f;
 
     std::atomic<std::atomic<float>*> levelSource{ nullptr };
     std::unordered_set<int> pluginBypassState;

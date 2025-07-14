@@ -1,3 +1,10 @@
+/*
+  ==============================================================================
+
+    MainComponent.h
+
+  ==============================================================================
+*/
 #pragma once
 
 #include "JuceHeader.h"
@@ -45,6 +52,9 @@ public:
     MasterUtilityComponent& getMasterUtilityComponent() { return *masterUtilityColumn; }
     PresetBarComponent& getPresetBar() { return *presetBar; }
     MenubarComponent* getMenubarComponent() { return menubar.get(); }
+
+    // <<< ADDED: Getter for the status bar >>>
+    StatusBarComponent* getStatusBarComponent() { return statusBar.get(); }
 
 
 private:
