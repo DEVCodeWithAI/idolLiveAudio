@@ -1,4 +1,4 @@
-# idolLiveAudio (v1.1.0)
+# idolLiveAudio (v1.3.1)
 
 **Lightweight, open-source Audio Plugin Host for creators, singers, and streamers.**
 
@@ -21,41 +21,20 @@
 
 ---
 
-## ✨ Điểm nổi bật trong v1.2.0: Trình quản lý Beat, giao diện mới và cải tiến ổn định
+## ✨ Điểm nổi bật trong v1.3.1
 
-Phiên bản 1.2.0 tiếp tục nâng cấp idolLiveAudio thành một Mini-DAW thông minh và linh hoạt hơn, phục vụ tối ưu cho biểu diễn live và sáng tạo cá nhân.
+Phiên bản 1.3.1 tập trung cải tiến trải nghiệm cốt lõi, nhấn mạnh vào sự ổn định và tốc độ cho người biểu diễn trực tiếp.
 
-* **🎵 Trình quản lý Beat (Beat Manager)**  
-  Giao diện mới giúp duyệt và tìm kiếm beat nhanh chóng, mượt mà và hiện đại:  
-  - Tự động gợi ý khi nhập tên.  
-  - Animation trượt mở rộng/thu gọn mượt mà.  
-  - Có thể thay đổi thư mục quét beat mà không ảnh hưởng đến dữ liệu đã index (.json).
-
-* **🎧 FX Chains chuyên dụng**  
-  Mỗi track (Vocal & Music) có 4 kênh FX Send riêng biệt để sử dụng reverb, delay, v.v. theo kiểu song song như các DAW chuyên nghiệp.
-
-* **🎙 Trình phát và thu riêng từng track**  
-  Tải nhạc nền hoặc audio trực tiếp vào từng track và xử lý qua chuỗi plugin tương ứng.  
-  Thu lại đầu ra sau plugin (Post-FX) để nhanh chóng lưu ý tưởng hoặc vocal hoàn chỉnh.
-
-* **🧩 Hệ thống Project đa rãnh**  
-    * **Record Project (RAW)** – Ghi âm đồng thời tín hiệu gốc từ Vocal và Music.  
-    * **Quản lý Project** – Dễ dàng xem, tải hoặc xóa các bản ghi.  
-    * **Phát lại đồng bộ** – Phát lại cùng lúc hai track một cách hoàn hảo.
-
-* **🛡 Hệ thống Khóa an toàn (Safety Lock)**  
-  Ngăn thay đổi ngoài ý muốn trong lúc livestream bằng cách khóa các thiết lập quan trọng.
-
-* **🧼 Sửa lỗi & nâng cấp khác**  
-    - Sửa lỗi xung đột với ASIO Link Pro khi đổi Preset.  
-    - Nhấn Mute không còn hỏi lưu Preset.  
-    - Giao diện được cập nhật mới, rõ ràng và hiện đại hơn.
-
+* **⚡️ Chuyển đổi Preset Tức thì (Hot-Swap)**: Thay đổi giữa các preset có thông số plugin khác nhau một cách tức thời, không bị ngắt quãng hay gián đoạn âm thanh. Hoàn hảo cho việc chuyển đổi hiệu ứng giọng hát giữa các bài hát khi đang livestream.
+* **🧠 Nhận diện Thay đổi Thông minh**: Ứng dụng giờ đây đủ thông minh để bỏ qua các thay đổi từ những plugin không cần chỉnh sửa (như plugin dò tone), ngăn chặn các thông báo "Bạn có muốn lưu không?" không cần thiết.
+* **🛡️ Quản lý Trạng thái Vững chắc**: Logic lưu và tải preset đã được đại tu để bao gồm cả trạng thái khóa giao diện, đảm bảo cấu hình của bạn được khôi phục chính xác như lúc bạn rời đi.
+* **🐛 Sửa lỗi & Ổn định**: Các cải tiến chung về việc host plugin và quản lý preset để đảm bảo trải nghiệm mượt mà, đáng tin cậy hơn.
 
 ---
 
 ## 🚀 Tính năng chính
 
+✅ **Chuyển đổi Preset "Nóng" Tức thì** cho buổi biểu diễn liền mạch
 ✅ Hỗ trợ Waves, Antares Auto-Tune Pro, và tất cả plugin VST3
 ✅ Xử lý âm thanh thời gian thực với độ trễ thấp
 ✅ Quản lý chuỗi plugin linh hoạt trên mỗi track
@@ -70,22 +49,11 @@ Phiên bản 1.2.0 tiếp tục nâng cấp idolLiveAudio thành một Mini-DAW 
 
 ---
 
-## 🗺️ Lộ trình Phát triển (Roadmap)
+## 💡 Mẹo chuyên nghiệp: Cài đặt Plugin nhận diện Tone
 
-### Hiện tại: Phiên bản Solo (v1.1.0)
+Để có trải nghiệm tốt nhất, bạn nên đặt các plugin nhận diện tone (ví dụ: **Antares Auto-Key**, **Waves Key Detector**...) vào **ô plugin đầu tiên của track Music**.
 
-Phiên bản hiện tại được tối ưu hóa cho các nghệ sĩ solo, streamer và người sáng tạo nội dung biểu diễn một mình, cung cấp đầy đủ công cụ để xử lý một track vocal và một track nhạc nền một cách chuyên nghiệp.
-
-### Tương lai: Phiên bản Pro
-
-Một phiên bản **idolLiveAudio Pro** đang được lên kế hoạch với các tính năng nâng cao dành cho người dùng chuyên nghiệp:
-
-* **Không giới hạn Track**: Hỗ trợ không giới hạn số lượng track Vocal và Music.
-* **Tích hợp Chuyên sâu**: Tương thích sâu hơn với các plugin từ các nhà cung cấp lớn (Vendor) để đảm bảo hiệu suất và độ ổn định tối đa.
-* **Phím tắt Toàn cục (Global Hotkey)**: Kích hoạt các hành động trong ứng dụng ngay cả khi cửa sổ không được focus, được hỗ trợ bởi chứng chỉ ký số an toàn.
-* **Quản lý bản quyền**: Tích hợp giao thức đăng nhập vào máy chủ để quản lý giấy phép sử dụng.
-
-> **Giá dự kiến cho bản Pro:** **$49 USD** cho giấy phép sử dụng vĩnh viễn.
+Ứng dụng đã được tối ưu hóa đặc biệt để bỏ qua các thay đổi trạng thái từ ô này. Điều này giúp ứng dụng không hỏi bạn lưu preset sau khi plugin tự động nhận diện một tone mới, đảm bảo một quy trình làm việc thực sự liền mạch.
 
 ---
 

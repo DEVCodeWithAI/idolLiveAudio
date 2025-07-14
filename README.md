@@ -1,4 +1,4 @@
-# idolLiveAudio (v1.1.0)
+# idolLiveAudio (v1.3.1)
 
 **Lightweight, open-source Audio Plugin Host for creators, singers, and streamers.**
 
@@ -21,40 +21,20 @@
 
 ---
 
-## ✨ What's New in v1.2.0: Beat Manager, UI Refresh & More
+## ✨ What's New in v1.3.1
 
-Version 1.2.0 builds on the Mini-DAW foundation, adding intelligent beat management, enhanced UI, and improved stability for live performance and creative workflows.
+Version 1.3.1 refines the core experience with a focus on stability and speed for live performers.
 
-* **🎵 Beat Manager**:  
-  A brand-new beat browsing and search interface with smart animation.  
-  - Expand/collapse smoothly over the Soundboard area.  
-  - Instantly filter beats by name with auto-suggest.  
-  - Supports changing scan folder without affecting existing JSON indexes.
-
-* **🎧 Dedicated FX Chains**:  
-  Each track (Vocal & Music) has 4 FX Send slots for parallel reverb, delay, etc. — just like pro DAWs.
-
-* **🎙 Per-Track Player & Recorder**:  
-  Load audio files (e.g., backing tracks) directly into Vocal or Music tracks.  
-  Record post-FX audio instantly for polished takes or creative ideas.
-
-* **🧩 Multi-Track Project System**:
-    * **Record Project (RAW)** – Simultaneous raw recording from Vocal and Music tracks.
-    * **Manage Projects** – View, load, or delete multi-track sessions.
-    * **Synchronized Playback** – Both raw tracks play in perfect sync.
-
-* **🛡 Safety Lock System**:  
-  Lock key settings to avoid accidental changes during a performance.
-
-* **🧼 Bug Fixes & Improvements**:
-    - Fixed ASIO Link Pro conflict when switching Presets.
-    - Mute no longer prompts for saving Presets.
-    - UI updated for better clarity and cleaner layout.
+* **⚡️ Instant Preset Switching (Hot-Swap)**: Change between presets containing different plugin settings instantly, with no audio dropouts or glitches. This is perfect for switching vocal effects between songs during a live stream.
+* **🧠 Smart Change Detection**: The app is now intelligent enough to ignore parameter changes from non-editable plugins (like key finders), preventing unnecessary "Do you want to save?" prompts.
+* **🛡️ Robust State Management**: Preset saving and loading logic has been overhauled to correctly include the UI lock state, ensuring your setup is restored exactly as you left it.
+* **🐛 Bug Fixes & Stability**: General improvements to plugin hosting and preset management to ensure a smoother, more reliable experience.
 
 ---
 
 ## 🚀 Key Features
 
+✅ **Instant "Hot-Swap" Preset Switching** for seamless live performance
 ✅ Supports Waves, Antares Auto-Tune Pro, and all VST3 plugins
 ✅ Real-time audio processing with low latency
 ✅ Flexible plugin chain management per track
@@ -69,22 +49,11 @@ Version 1.2.0 builds on the Mini-DAW foundation, adding intelligent beat managem
 
 ---
 
-## 🗺️ Roadmap
+## 💡 Pro-Tip: Setting Up Key Detection Plugins
 
-### Current: The Soloist Edition (v1.1.0)
+For the best experience, it is highly recommended to place key detection plugins (like **Antares Auto-Key**, **Waves Key Detector**, etc.) in the **first plugin slot of the Music track**.
 
-The current version is optimized for solo artists, streamers, and content creators, providing a complete toolset to professionally process one vocal track and one music track.
-
-### Future: The Pro Edition
-
-An **idolLiveAudio Pro** version is planned with advanced features for professional users:
-
-* **Unlimited Tracks**: Support for an unlimited number of Vocal and Music tracks.
-* **Deep Vendor Integration**: Enhanced compatibility and performance with plugins from major vendors.
-* **Global Hotkeys**: Trigger actions in the application even when the window is not focused, supported by a secure code signing certificate.
-* **License Management**: An integrated server login protocol to manage software licenses.
-
-> **Projected Price for Pro Edition:** **$49 USD** for a perpetual license.
+The application is specifically optimized to ignore state changes from this slot. This prevents the app from asking you to save your preset after the plugin automatically detects a new key, ensuring a truly seamless workflow.
 
 ---
 
